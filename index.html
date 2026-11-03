@@ -12,13 +12,9 @@
 <link rel="icon" type="image/png" sizes="192x192" href="./icon-192.png">
 <link rel="icon" type="image/png" sizes="512x512" href="./icon-512.png">
 <link rel="apple-touch-icon" href="./icon-192.png">
-
-<!-- iOS PWA -->
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="QR Studio">
-
-<!-- Android PWA -->
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="application-name" content="QR Studio">
 
@@ -44,7 +40,6 @@
     padding-top: var(--safe-top); padding-bottom: var(--safe-bottom);
     overscroll-behavior: none;
   }
-  /* منع التكبير المزدوج على iOS */
   button, input, select, textarea { touch-action: manipulation; }
   header {
     background: linear-gradient(135deg, var(--primary), var(--secondary));
@@ -447,7 +442,7 @@
   .password-strength.medium .password-strength-bar { width: 66%; background: var(--warning); }
   .password-strength.strong .password-strength-bar { width: 100%; background: var(--success); }
 
-  /* ===== PWA Install Banner ===== */
+  /* PWA Install Banner */
   #installBanner {
     display: none;
     position: fixed; bottom: calc(16px + var(--safe-bottom)); right: 16px; left: 16px;
@@ -475,8 +470,6 @@
     font-size: 1rem; flex-shrink: 0;
   }
   #installBanner .install-close:hover { background: var(--danger); color: white; }
-
-  /* iOS Install Hint */
   #iosInstallHint {
     display: none; position: fixed; inset: 0;
     background: var(--overlay); z-index: 1500;
@@ -571,25 +564,8 @@
             </select>
           </div>
           <div class="field"><label>الإجابة</label><input type="text" id="regSecurityAnswer" placeholder="الإجابة السرية"></div>
-          <button class="btn-full" onclick="startEmailVerification()" style="padding:14px;">📧 التالي: تحقق من الإيميل</button>
+          <button class="btn-full" onclick="registerNow()" style="padding:14px;">✨ إنشاء الحساب</button>
           <div class="auth-switch">عندك حساب؟ <a onclick="showLogin()">سجّل دخول</a></div>
-        </div>
-
-        <div id="verifyForm" style="display:none;">
-          <div class="info-box success">📧 تم إرسال كود تحقق إلى:<br><strong id="verifyEmailDisplay">—</strong></div>
-          <div class="info-box warn">⚠️ <strong>ملاحظة:</strong> التطبيق تجريبي — الكود يظهر هنا مباشرة.</div>
-          <div class="info-box" style="text-align:center;font-size:1.5rem;font-weight:800;letter-spacing:4px;" id="demoCodeDisplay">——————</div>
-          <p style="text-align:center;font-size:0.85rem;color:var(--muted);margin-bottom:10px;">أدخل الكود المكوّن من 6 أرقام:</p>
-          <div class="code-inputs" id="codeInputs">
-            <input type="text" maxlength="1" inputmode="numeric" oninput="moveCode(this,0)">
-            <input type="text" maxlength="1" inputmode="numeric" oninput="moveCode(this,1)">
-            <input type="text" maxlength="1" inputmode="numeric" oninput="moveCode(this,2)">
-            <input type="text" maxlength="1" inputmode="numeric" oninput="moveCode(this,3)">
-            <input type="text" maxlength="1" inputmode="numeric" oninput="moveCode(this,4)">
-            <input type="text" maxlength="1" inputmode="numeric" oninput="moveCode(this,5)">
-          </div>
-          <button class="btn-full" onclick="verifyAndRegister()" style="padding:14px;">✅ تحقق وأكمل التسجيل</button>
-          <div class="auth-switch"><a onclick="resendCode()">🔄 إعادة إرسال الكود</a> • <a onclick="showRegister()">← رجوع</a></div>
         </div>
 
         <div id="forgotPasswordForm" style="display:none;">
@@ -858,7 +834,6 @@
   </div>
 </div>
 
-<!-- PWA Install Banner -->
 <div id="installBanner">
   <div class="install-icon">📱</div>
   <div class="install-text">
@@ -869,7 +844,6 @@
   <button class="install-close" onclick="dismissInstall()">✕</button>
 </div>
 
-<!-- iOS Install Hint -->
 <div id="iosInstallHint" onclick="if(event.target===this)closeIosHint()">
   <div class="ios-card">
     <div class="ios-arrow">⬆️</div>
@@ -882,6 +856,14 @@
 <div id="toast"></div>
 
 <script>
+/* ========== إعدادات المزامنة السحابية (JSONBin.io) ========== */
+/* ⚠️ املأ القيم دي من https://jsonbin.io */
+var JSONBIN_CONFIG = {
+  binId: 'ضع_هنا_BIN_ID',
+  apiKey: '$2b$10$ضع_هنا_API_KEY'
+};
+var JSONBIN_URL = 'https://api.jsonbin.io/v3/b/' + JSONBIN_CONFIG.binId;
+
 /* ========== CONSTANTS ========== */
 var DB_KEY = 'qr_studio_v8';
 var SESSION_KEY = 'qr_session_v8';
@@ -897,9 +879,9 @@ var logoDataUrl = null;
 var currentDetailId = null;
 var savedLinkForModal = null;
 var currentTheme = 'light';
-var pendingRegistration = null;
 var adminViewingUserId = null;
 var deferredInstallPrompt = null;
+var isSyncing = false;
 
 var design = {
   colorDark: '#1e293b', colorLight: '#ffffff', colorGrad: '#8b5cf6',
@@ -927,38 +909,28 @@ var BLOCKED_DOMAINS = ['test.com','example.com','fake.com','abc.com','xyz.com','
 window.addEventListener('beforeinstallprompt', function(e) {
   e.preventDefault();
   deferredInstallPrompt = e;
-  // عرض البانر بعد 3 ثواني
   setTimeout(function() {
     if (!localStorage.getItem('pwa_install_dismissed')) {
       document.getElementById('installBanner').classList.add('show');
     }
   }, 3000);
 });
-
 function installPWA() {
   if (!deferredInstallPrompt) return;
   deferredInstallPrompt.prompt();
   deferredInstallPrompt.userChoice.then(function(choice) {
-    if (choice.outcome === 'accepted') {
-      toast('✅ تم تثبيت التطبيق!', 'ok');
-    }
+    if (choice.outcome === 'accepted') toast('✅ تم تثبيت التطبيق!', 'ok');
     deferredInstallPrompt = null;
     document.getElementById('installBanner').classList.remove('show');
   });
 }
-
 function dismissInstall() {
   document.getElementById('installBanner').classList.remove('show');
   localStorage.setItem('pwa_install_dismissed', '1');
 }
-
-// كشف iOS لعرض تعليمات التثبيت
-function isIOS() {
-  return /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
-}
+function isIOS() { return /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream; }
 function isStandalone() {
-  return window.matchMedia('(display-mode: standalone)').matches ||
-         window.navigator.standalone === true;
+  return window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
 }
 window.addEventListener('load', function() {
   if (isIOS() && !isStandalone() && !localStorage.getItem('ios_hint_shown')) {
@@ -968,11 +940,8 @@ window.addEventListener('load', function() {
     }, 3000);
   }
 });
-function closeIosHint() {
-  document.getElementById('iosInstallHint').classList.remove('show');
-}
+function closeIosHint() { document.getElementById('iosInstallHint').classList.remove('show'); }
 
-// تسجيل Service Worker
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', function() {
     navigator.serviceWorker.register('./service-worker.js')
@@ -997,38 +966,95 @@ function newId() { return Math.random().toString(36).substring(2,10) + Date.now(
 function esc(s) { return String(s||'').replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];}); }
 function hexToRgb(hex){var r=/^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);return r?{r:parseInt(r[1],16),g:parseInt(r[2],16),b:parseInt(r[3],16)}:null;}
 
-/* ========== STORAGE ========== */
+/* ========== STORAGE (Cloud Sync via JSONBin) ========== */
 function saveDB() {
-  try {
-    var json = JSON.stringify(db);
-    localStorage.setItem(DB_KEY, json);
+  // احفظ محلياً كنسخة احتياطية
+  try { localStorage.setItem(DB_KEY, JSON.stringify(db)); } catch(e) {}
+
+  // ارفع للسحابة (بدون انتظار)
+  if (JSONBIN_CONFIG.binId.indexOf('ضع_هنا') !== -1) {
+    console.warn('[Cloud] JSONBin not configured — save skipped');
     return true;
-  } catch(e) { console.error('saveDB', e); toast('⚠️ مساحة التخزين ممتلئة', 'err'); return false; }
+  }
+
+  fetch(JSONBIN_URL, {
+    method: 'PUT',
+    headers: {
+      'Content-Type': 'application/json',
+      'X-Master-Key': JSONBIN_CONFIG.apiKey
+    },
+    body: JSON.stringify(db)
+  }).then(function(res) {
+    if (!res.ok) console.warn('[Cloud] Save failed:', res.status);
+    else console.log('[Cloud] Saved:', db.accounts.length, 'accounts,', db.links.length, 'links');
+  }).catch(function(e) {
+    console.error('[Cloud] Save error:', e);
+  });
+
+  return true;
 }
+
 function loadDB() {
+  // 1) حمّل من localStorage فوراً
   try {
     var raw = localStorage.getItem(DB_KEY);
-    db = raw ? JSON.parse(raw) : { accounts: [], links: [] };
-    if (!Array.isArray(db.accounts)) db.accounts = [];
-    if (!Array.isArray(db.links)) db.links = [];
-  } catch(e) { db = { accounts: [], links: [] }; }
+    if (raw) {
+      var local = JSON.parse(raw);
+      if (local && Array.isArray(local.accounts)) {
+        db.accounts = local.accounts;
+        db.links = Array.isArray(local.links) ? local.links : [];
+      }
+    }
+  } catch(e) {}
+
+  // 2) حمّل من السحابة في الخلفية
+  if (JSONBIN_CONFIG.binId.indexOf('ضع_هنا') !== -1) {
+    console.warn('[Cloud] JSONBin not configured — using local data only');
+    return Promise.resolve(db);
+  }
+
+  return fetch(JSONBIN_URL + '/latest', {
+    method: 'GET',
+    headers: { 'X-Master-Key': JSONBIN_CONFIG.apiKey }
+  }).then(function(res) {
+    if (!res.ok) {
+      console.warn('[Cloud] Load failed:', res.status);
+      return db;
+    }
+    return res.json();
+  }).then(function(data) {
+    if (data && data.record) {
+      db.accounts = Array.isArray(data.record.accounts) ? data.record.accounts : [];
+      db.links = Array.isArray(data.record.links) ? data.record.links : [];
+      try { localStorage.setItem(DB_KEY, JSON.stringify(db)); } catch(e) {}
+      console.log('[Cloud] Loaded:', db.accounts.length, 'accounts,', db.links.length, 'links');
+    }
+    return db;
+  }).catch(function(e) {
+    console.error('[Cloud] Load error:', e);
+    return db;
+  });
 }
+
 function saveSession() {
   try {
     if (currentUser) localStorage.setItem(SESSION_KEY, JSON.stringify({ userId: currentUser.id }));
     else localStorage.removeItem(SESSION_KEY);
   } catch(e) {}
 }
-function loadSession() {
+
+async function loadSession() {
   try {
     var raw = localStorage.getItem(SESSION_KEY);
     if (raw) {
       var sess = JSON.parse(raw);
-      loadDB();
-      currentUser = db.accounts.find(function(a){return a.id===sess.userId;}) || null;
+      await loadDB();
+      currentUser = db.accounts.find(function(a){ return a.id === sess.userId; }) || null;
       if (!currentUser) localStorage.removeItem(SESSION_KEY);
     }
-  } catch(e) { currentUser = null; }
+  } catch(e) {
+    currentUser = null;
+  }
 }
 
 /* ========== THEME ========== */
@@ -1053,7 +1079,6 @@ function applyTheme(themeId, customVars) {
   if (t) t.classList.toggle('active', themeId==='dark');
   var tb = document.getElementById('themeToggleBtn');
   if (tb) tb.textContent = themeId==='dark' ? '☀️' : '🌙';
-  // تحديث شريط المتصفح
   var metaTheme = document.querySelector('meta[name="theme-color"]');
   if (metaTheme && vars.bg) metaTheme.setAttribute('content', vars.bg);
 }
@@ -1154,7 +1179,7 @@ function getLinkIcon(url) {
 
 /* ========== AUTH FLOW ========== */
 function hideAllAuthForms() {
-  ['loginForm','registerForm','verifyForm','forgotPasswordForm','forgotAccountForm'].forEach(function(id){
+  ['loginForm','registerForm','forgotPasswordForm','forgotAccountForm'].forEach(function(id){
     var el = document.getElementById(id); if (el) el.style.display = 'none';
   });
 }
@@ -1224,7 +1249,8 @@ function checkPasswordStrength() {
   else { bar.classList.add('strong'); text.textContent = '🟢 قوية'; }
 }
 
-function startEmailVerification() {
+/* ========== REGISTRATION (Direct — no email verification) ========== */
+function registerNow() {
   var name = document.getElementById('regName').value.trim();
   var email = document.getElementById('regEmail').value.trim().toLowerCase();
   var password = document.getElementById('regPassword').value;
@@ -1240,78 +1266,58 @@ function startEmailVerification() {
   if (!secQ) { toast('⚠️ اختر سؤال أمان', 'err'); return; }
   if (!secA || secA.length < 2) { toast('⚠️ اكتب إجابة سؤال الأمان', 'err'); return; }
 
-  loadDB();
-  if (db.accounts.find(function(a){return a.email===email;})) { toast('⚠️ الإيميل مسجل بالفعل', 'err'); showLogin(); return; }
+  toast('⏳ جاري إنشاء الحساب...', 'info');
 
-  var code = String(Math.floor(100000 + Math.random()*900000));
-  pendingRegistration = { name:name, email:email, password:password, securityQuestion:secQ, securityAnswer:secA.toLowerCase(), code:code, createdAt:new Date().toISOString() };
+  // حمّل أحدث نسخة من السحابة عشان نتأكد مفيش تكرار
+  loadDB().then(function() {
+    if (db.accounts.find(function(a){ return a.email === email; })) {
+      toast('⚠️ الإيميل مسجل بالفعل — سجّل دخول', 'err');
+      showLogin();
+      document.getElementById('loginEmail').value = email;
+      return;
+    }
 
-  hideAllAuthForms();
-  document.getElementById('verifyForm').style.display = 'block';
-  document.getElementById('authTitle').textContent = 'تحقق من الإيميل';
-  document.getElementById('authSubtitle').textContent = 'أدخل الكود';
-  document.getElementById('authIcon').textContent = '📧';
-  document.getElementById('verifyEmailDisplay').textContent = email;
-  document.getElementById('demoCodeDisplay').textContent = code;
-  document.querySelectorAll('#codeInputs input').forEach(function(i){ i.value=''; });
-  setTimeout(function(){ document.querySelector('#codeInputs input').focus(); }, 100);
-  toast('📧 الكود ظهر — اكتبه', 'info');
+    var user = {
+      id: newId(),
+      name: name,
+      email: email,
+      password: password,
+      securityQuestion: secQ,
+      securityAnswer: secA.toLowerCase(),
+      theme: 'light',
+      isAdmin: db.accounts.length === 0,
+      status: 'active',
+      emailVerified: true,
+      customColors: {},
+      createdAt: new Date().toISOString()
+    };
+
+    db.accounts.push(user);
+    saveDB();
+
+    currentUser = user;
+    saveSession();
+    applyTheme(user.theme);
+    toast('🎉 أهلاً ' + user.name + '! تم التسجيل', 'ok');
+    enterApp();
+  });
 }
 
-function moveCode(input, idx) {
-  var inputs = document.querySelectorAll('#codeInputs input');
-  if (input.value && idx < 5) { if (inputs[idx+1]) inputs[idx+1].focus(); }
-  else if (!input.value && idx > 0) { if (inputs[idx-1]) inputs[idx-1].focus(); }
-}
-function resendCode() {
-  if (!pendingRegistration) { showRegister(); return; }
-  var code = String(Math.floor(100000 + Math.random()*900000));
-  pendingRegistration.code = code;
-  document.getElementById('demoCodeDisplay').textContent = code;
-  document.querySelectorAll('#codeInputs input').forEach(function(i){ i.value=''; });
-  document.querySelector('#codeInputs input').focus();
-  toast('🔄 كود جديد: ' + code, 'info');
-}
-
-function verifyAndRegister() {
-  if (!pendingRegistration) { showRegister(); return; }
-  var inputs = document.querySelectorAll('#codeInputs input');
-  var entered = ''; inputs.forEach(function(i){ entered += i.value; });
-  if (entered.length !== 6) { toast('⚠️ اكتب 6 أرقام', 'err'); return; }
-  if (entered !== pendingRegistration.code) {
-    toast('❌ الكود غير صحيح', 'err');
-    inputs.forEach(function(i){ i.value=''; }); inputs[0].focus(); return;
-  }
-  loadDB();
-  if (db.accounts.find(function(a){return a.email===pendingRegistration.email;})) { toast('⚠️ الإيميل مسجل بالفعل', 'err'); pendingRegistration=null; showLogin(); return; }
-
-  var user = {
-    id: newId(), name: pendingRegistration.name, email: pendingRegistration.email,
-    password: pendingRegistration.password,
-    securityQuestion: pendingRegistration.securityQuestion, securityAnswer: pendingRegistration.securityAnswer,
-    theme: 'light', isAdmin: db.accounts.length === 0, status: 'active',
-    emailVerified: true, customColors: {},
-    createdAt: new Date().toISOString()
-  };
-  db.accounts.push(user);
-  if (!saveDB()) { db.accounts = db.accounts.filter(function(a){return a.id!==user.id;}); return; }
-  pendingRegistration = null;
-  currentUser = user;
-  saveSession();
-  applyTheme(user.theme);
-  toast('🎉 أهلاً ' + user.name + '! تم التسجيل', 'ok');
-  enterApp();
-}
-
-function doLogin() {
+async function doLogin() {
   var email = document.getElementById('loginEmail').value.trim().toLowerCase();
   var password = document.getElementById('loginPassword').value;
   if (!email || !password) { toast('⚠️ املأ البيانات', 'err'); return; }
-  loadDB();
-  var user = db.accounts.find(function(a){ return a.email===email && a.password===password; });
+
+  toast('⏳ جاري تسجيل الدخول...', 'info');
+
+  // انتظر تحميل أحدث بيانات من السحابة
+  await loadDB();
+
+  var user = db.accounts.find(function(a){ return a.email === email && a.password === password; });
   if (!user) { toast('❌ إيميل أو كلمة مرور غير صحيحة', 'err'); return; }
   if (user.status === 'banned') { toast('🚫 حسابك محظور — تواصل مع الأدمن', 'err'); return; }
   if (user.status === 'disabled') { toast('⏸️ حسابك معطل — تواصل مع الأدمن', 'err'); return; }
+
   currentUser = user;
   saveSession();
   applyTheme(user.theme || 'light');
@@ -1322,45 +1328,48 @@ function doLogin() {
 function loadSecurityQuestion() {
   var email = document.getElementById('fpEmail').value.trim().toLowerCase();
   if (!email) { toast('⚠️ اكتب الإيميل', 'err'); return; }
-  loadDB();
-  var user = db.accounts.find(function(a){return a.email===email;});
-  if (!user) { toast('❌ لا يوجد حساب', 'err'); return; }
-  if (!user.securityQuestion) { toast('⚠️ لا يوجد سؤال أمان', 'err'); return; }
-  var questions = { pet:'ما اسم حيوانك الأليف الأول؟', city:'في أي مدينة وُلدت؟', school:'ما اسم مدرستك الابتدائية؟', friend:'من هو أفضل صديق في طفولتك؟' };
-  document.getElementById('fpQuestion').textContent = questions[user.securityQuestion] || user.securityQuestion;
-  document.getElementById('fpStep2').style.display = 'block';
-  document.getElementById('fpResult').style.display = 'none';
-  document.getElementById('fpAnswer').value = '';
-  document.getElementById('fpAnswer').focus();
+  loadDB().then(function() {
+    var user = db.accounts.find(function(a){return a.email===email;});
+    if (!user) { toast('❌ لا يوجد حساب', 'err'); return; }
+    if (!user.securityQuestion) { toast('⚠️ لا يوجد سؤال أمان', 'err'); return; }
+    var questions = { pet:'ما اسم حيوانك الأليف الأول؟', city:'في أي مدينة وُلدت؟', school:'ما اسم مدرستك الابتدائية؟', friend:'من هو أفضل صديق في طفولتك؟' };
+    document.getElementById('fpQuestion').textContent = questions[user.securityQuestion] || user.securityQuestion;
+    document.getElementById('fpStep2').style.display = 'block';
+    document.getElementById('fpResult').style.display = 'none';
+    document.getElementById('fpAnswer').value = '';
+    document.getElementById('fpAnswer').focus();
+  });
 }
 function recoverPassword() {
   var email = document.getElementById('fpEmail').value.trim().toLowerCase();
   var answer = document.getElementById('fpAnswer').value.trim().toLowerCase();
   var resultEl = document.getElementById('fpResult');
   if (!answer) { toast('⚠️ اكتب الإجابة', 'err'); return; }
-  loadDB();
-  var user = db.accounts.find(function(a){return a.email===email;});
-  if (!user) { toast('❌ الحساب غير موجود', 'err'); return; }
-  if (answer !== (user.securityAnswer||'')) { toast('❌ الإجابة غير صحيحة', 'err'); return; }
-  resultEl.style.display = 'block';
-  resultEl.innerHTML = '✅ تم التحقق!<br><br>كلمة المرور: <strong style="font-family:monospace;font-size:1.1rem;">' + user.password + '</strong>';
-  toast('🔓 تم الاسترجاع', 'ok');
+  loadDB().then(function() {
+    var user = db.accounts.find(function(a){return a.email===email;});
+    if (!user) { toast('❌ الحساب غير موجود', 'err'); return; }
+    if (answer !== (user.securityAnswer||'')) { toast('❌ الإجابة غير صحيحة', 'err'); return; }
+    resultEl.style.display = 'block';
+    resultEl.innerHTML = '✅ تم التحقق!<br><br>كلمة المرور: <strong style="font-family:monospace;font-size:1.1rem;">' + user.password + '</strong>';
+    toast('🔓 تم الاسترجاع', 'ok');
+  });
 }
 function findAccount() {
   var query = document.getElementById('faQuery').value.trim().toLowerCase();
   var resultsEl = document.getElementById('faResults');
   if (!query || query.length < 2) { toast('⚠️ 2 حروف على الأقل', 'err'); return; }
-  loadDB();
-  var matches = db.accounts.filter(function(a){ return (a.email||'').toLowerCase().indexOf(query)!==-1 || (a.name||'').toLowerCase().indexOf(query)!==-1; });
-  if (matches.length === 0) { resultsEl.innerHTML = '<div class="info-box warn">❌ لا توجد حسابات مطابقة</div>'; return; }
-  var html = '<div class="info-box">🔍 وجدنا ' + matches.length + ' حساب:</div>';
-  matches.forEach(function(m){
-    html += '<div style="background:var(--bg);padding:12px;border-radius:10px;margin-bottom:8px;font-size:0.85rem;">';
-    html += '<strong>👤 ' + esc(m.name) + '</strong><br>';
-    html += '<span style="color:var(--muted);font-family:monospace;direction:ltr;">' + maskEmail(m.email) + '</span>';
-    html += '</div>';
+  loadDB().then(function() {
+    var matches = db.accounts.filter(function(a){ return (a.email||'').toLowerCase().indexOf(query)!==-1 || (a.name||'').toLowerCase().indexOf(query)!==-1; });
+    if (matches.length === 0) { resultsEl.innerHTML = '<div class="info-box warn">❌ لا توجد حسابات مطابقة</div>'; return; }
+    var html = '<div class="info-box">🔍 وجدنا ' + matches.length + ' حساب:</div>';
+    matches.forEach(function(m){
+      html += '<div style="background:var(--bg);padding:12px;border-radius:10px;margin-bottom:8px;font-size:0.85rem;">';
+      html += '<strong>👤 ' + esc(m.name) + '</strong><br>';
+      html += '<span style="color:var(--muted);font-family:monospace;direction:ltr;">' + maskEmail(m.email) + '</span>';
+      html += '</div>';
+    });
+    resultsEl.innerHTML = html;
   });
-  resultsEl.innerHTML = html;
 }
 function maskEmail(email) {
   if (!email) return '***';
@@ -1556,7 +1565,6 @@ function saveQR() {
   var url = document.getElementById('inUrl').value.trim();
   if (!label) { toast('⚠️ اكتب عنوان', 'err'); document.getElementById('inLabel').focus(); return; }
   if (!url) { toast('⚠️ اكتب رابط', 'err'); document.getElementById('inUrl').focus(); return; }
-  loadDB();
   var designSnapshot = JSON.parse(JSON.stringify(design));
   designSnapshot.logo = logoDataUrl || null;
   var savedLink;
@@ -1616,7 +1624,6 @@ function closeSuccessAndGoToList(){ closeSuccessModal(); switchView('list'); }
 
 /* ========== EDIT ========== */
 function editLink(id) {
-  loadDB();
   var link = db.links.find(function(l){return l.id===id;});
   if (!link) return;
   editingId = id;
@@ -1738,7 +1745,6 @@ function renderList() {
 
 /* ========== DETAIL ========== */
 function viewDetail(id) {
-  loadDB();
   var link = db.links.find(function(l){return l.id===id;});
   if (!link) return;
   currentDetailId = id;
@@ -1853,7 +1859,6 @@ function renderAccounts() {
 }
 
 function toggleAdmin(userId) {
-  loadDB();
   var u = db.accounts.find(function(a){return a.id===userId;});
   if (!u) return;
   if (u.id === currentUser.id) { toast('⚠️ لا يمكنك تغيير صلاحيتك', 'err'); return; }
@@ -1862,7 +1867,6 @@ function toggleAdmin(userId) {
   toast(u.isAdmin ? '👑 تم ترقية ' + u.name : '👤 تم إزالة أدمن ' + u.name, 'ok');
 }
 function disableAccount(userId) {
-  loadDB();
   var u = db.accounts.find(function(a){return a.id===userId;});
   if (!u) return;
   if (u.id === currentUser.id) { toast('⚠️ لا يمكنك تعطيل حسابك', 'err'); return; }
@@ -1871,14 +1875,12 @@ function disableAccount(userId) {
   toast('⏸️ تم تعطيل ' + u.name, 'info');
 }
 function enableAccount(userId) {
-  loadDB();
   var u = db.accounts.find(function(a){return a.id===userId;});
   if (!u) return;
   u.status = 'active'; saveDB(); renderAccounts();
   toast('▶️ تم تفعيل ' + u.name, 'ok');
 }
 function banAccount(userId) {
-  loadDB();
   var u = db.accounts.find(function(a){return a.id===userId;});
   if (!u) return;
   if (u.id === currentUser.id) { toast('⚠️ لا يمكنك حظر نفسك', 'err'); return; }
@@ -1887,14 +1889,12 @@ function banAccount(userId) {
   toast('🚫 تم حظر ' + u.name, 'err');
 }
 function unbanAccount(userId) {
-  loadDB();
   var u = db.accounts.find(function(a){return a.id===userId;});
   if (!u) return;
   u.status = 'active'; saveDB(); renderAccounts();
   toast('✅ تم إلغاء حظر ' + u.name, 'ok');
 }
 function deleteAccount(userId) {
-  loadDB();
   var u = db.accounts.find(function(a){return a.id===userId;});
   if (!u) return;
   if (u.id === currentUser.id) { toast('⚠️ لا يمكنك حذف حسابك', 'err'); return; }
@@ -1907,7 +1907,6 @@ function deleteAccount(userId) {
 }
 
 function adminViewUserQRs(userId) {
-  loadDB();
   var user = db.accounts.find(function(a){return a.id===userId;});
   if (!user) return;
   var userLinks = db.links.filter(function(l){return l.userId===userId;});
@@ -1922,9 +1921,10 @@ function adminViewUserQRs(userId) {
 }
 
 /* ========== INIT ========== */
-window.addEventListener('DOMContentLoaded', function() {
-  loadDB();
-  loadSession();
+window.addEventListener('DOMContentLoaded', async function() {
+  await loadDB();
+  await loadSession();
+
   if (currentUser) {
     applyTheme(currentUser.theme || 'light');
     enterApp();
@@ -1965,17 +1965,15 @@ window.addEventListener('DOMContentLoaded', function() {
     reader.readAsDataURL(file);
   });
   document.getElementById('loginPassword').addEventListener('keypress', function(e){ if (e.key === 'Enter') doLogin(); });
-  document.querySelectorAll('#codeInputs input').forEach(function(inp){
-    inp.addEventListener('keydown', function(e){
-      if (e.key === 'Backspace' && !this.value) {
-        var inputs = document.querySelectorAll('#codeInputs input');
-        var idx = Array.prototype.indexOf.call(inputs, this);
-        if (idx > 0) inputs[idx-1].focus();
-      }
-    });
-  });
 
   if (typeof QRCodeStyling === 'undefined') toast('⚠️ مكتبة QR لم تُحمّل', 'err');
+
+  // تنبيه لو JSONBin مش متظبط
+  if (JSONBIN_CONFIG.binId.indexOf('ضع_هنا') !== -1) {
+    setTimeout(function() {
+      toast('⚠️ فعّل المزامنة السحابية — اقرأ التعليمات', 'info');
+    }, 2000);
+  }
 });
 </script>
 </body>
