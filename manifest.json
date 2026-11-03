@@ -1,16 +1,55 @@
 {
   "name": "QR Studio Pro",
   "short_name": "QR Studio",
-  "description": "صمّم رموز QR باحترافية",
-  "start_url": "/",
+  "description": "صمّم رموز QR باحترافية — ألوان، أشكال، شعارات",
+  "start_url": "./index.html",
+  "scope": "./",
   "display": "standalone",
-  "orientation": "portrait",
+  "orientation": "portrait-primary",
   "background_color": "#6366f1",
   "theme_color": "#6366f1",
   "dir": "rtl",
   "lang": "ar",
+  "categories": ["utilities", "productivity", "design"],
   "icons": [
-    { "src": "icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any maskable" },
-    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+    {
+      "src": "./icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "./icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
+    {
+      "src": "./icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "./icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ],
+  "screenshots": [],
+  "shortcuts": [
+    {
+      "name": "إنشاء QR جديد",
+      "short_name": "إنشاء",
+      "url": "./index.html?view=create",
+      "icons": [{ "src": "./icon-192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "رموزي",
+      "short_name": "رموزي",
+      "url": "./index.html?view=list",
+      "icons": [{ "src": "./icon-192.png", "sizes": "192x192" }]
+    }
   ]
 }
