@@ -2,9 +2,28 @@
 <html lang="ar" dir="rtl">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes, viewport-fit=cover">
+<meta name="theme-color" content="#6366f1">
+<meta name="description" content="QR Studio Pro — صمّم رموز QR باحترافية">
 <title>QR Studio Pro</title>
+
+<!-- PWA -->
+<link rel="manifest" href="./manifest.json">
+<link rel="icon" type="image/png" sizes="192x192" href="./icon-192.png">
+<link rel="icon" type="image/png" sizes="512x512" href="./icon-512.png">
+<link rel="apple-touch-icon" href="./icon-192.png">
+
+<!-- iOS PWA -->
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="QR Studio">
+
+<!-- Android PWA -->
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="application-name" content="QR Studio">
+
 <script src="https://unpkg.com/qr-code-styling@1.5.0/lib/qr-code-styling.js"></script>
+
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
   :root {
@@ -14,13 +33,19 @@
     --border: #e2e8f0; --hover: #f8fafc; --shadow: rgba(0,0,0,0.06);
     --shadow-lg: rgba(0,0,0,0.15); --overlay: rgba(0,0,0,0.6);
     --preview-bg: linear-gradient(135deg, #f8fafc, #e0e7ff);
+    --safe-top: env(safe-area-inset-top, 0px);
+    --safe-bottom: env(safe-area-inset-bottom, 0px);
   }
-  html, body { height: 100%; overflow: hidden; }
+  html, body { height: 100%; overflow: hidden; -webkit-tap-highlight-color: transparent; }
   body {
     font-family: 'Segoe UI', Tahoma, sans-serif;
     background: var(--bg); color: var(--text);
     display: flex; flex-direction: column; transition: background 0.3s;
+    padding-top: var(--safe-top); padding-bottom: var(--safe-bottom);
+    overscroll-behavior: none;
   }
+  /* منع التكبير المزدوج على iOS */
+  button, input, select, textarea { touch-action: manipulation; }
   header {
     background: linear-gradient(135deg, var(--primary), var(--secondary));
     color: white; padding: 12px 20px;
@@ -62,7 +87,7 @@
     font-size: 1rem; font-weight: 700; color: var(--text);
     display: flex; align-items: center; gap: 8px; flex-shrink: 0;
   }
-  .main { flex: 1; overflow-y: auto; overflow-x: hidden; padding: 16px; background: var(--bg); }
+  .main { flex: 1; overflow-y: auto; overflow-x: hidden; padding: 16px; background: var(--bg); -webkit-overflow-scrolling: touch; }
   .view { display: none; max-width: 1200px; margin: 0 auto; }
   .view.active { display: block; animation: fadeIn 0.25s; }
   @keyframes fadeIn { from{opacity:0;transform:translateY(8px);} to{opacity:1;transform:translateY(0);} }
@@ -404,7 +429,7 @@
   .reset-theme-btn { background: var(--card); color: var(--text); border: 2px solid var(--border); padding: 8px 12px; border-radius: 8px; font-size: 0.75rem; font-weight: 600; cursor: pointer; margin-top: 10px; width: 100%; }
   .reset-theme-btn:hover { border-color: var(--primary); }
   #toast {
-    position: fixed; bottom: 24px; left: 50%;
+    position: fixed; bottom: calc(24px + var(--safe-bottom)); left: 50%;
     transform: translateX(-50%) translateY(100px);
     background: var(--text); color: var(--card);
     padding: 12px 22px; border-radius: 10px;
@@ -421,6 +446,53 @@
   .password-strength.weak .password-strength-bar { width: 33%; background: var(--danger); }
   .password-strength.medium .password-strength-bar { width: 66%; background: var(--warning); }
   .password-strength.strong .password-strength-bar { width: 100%; background: var(--success); }
+
+  /* ===== PWA Install Banner ===== */
+  #installBanner {
+    display: none;
+    position: fixed; bottom: calc(16px + var(--safe-bottom)); right: 16px; left: 16px;
+    background: var(--card); border: 2px solid var(--primary);
+    border-radius: 16px; padding: 14px 16px;
+    box-shadow: 0 10px 40px var(--shadow-lg);
+    z-index: 1500; align-items: center; gap: 12px;
+    animation: slideUp 0.4s;
+  }
+  #installBanner.show { display: flex; }
+  @keyframes slideUp { from{transform:translateY(100px);opacity:0;} to{transform:translateY(0);opacity:1;} }
+  #installBanner .install-icon {
+    width: 44px; height: 44px; border-radius: 10px;
+    background: linear-gradient(135deg, var(--primary), var(--secondary));
+    display: flex; align-items: center; justify-content: center;
+    font-size: 1.4rem; flex-shrink: 0;
+  }
+  #installBanner .install-text { flex: 1; min-width: 0; }
+  #installBanner .install-title { font-size: 0.9rem; font-weight: 700; margin-bottom: 2px; }
+  #installBanner .install-sub { font-size: 0.72rem; color: var(--muted); }
+  #installBanner button { padding: 8px 14px; font-size: 0.8rem; min-width: auto; }
+  #installBanner .install-close {
+    background: var(--bg); color: var(--muted); border: none;
+    width: 32px; height: 32px; border-radius: 50%; padding: 0;
+    font-size: 1rem; flex-shrink: 0;
+  }
+  #installBanner .install-close:hover { background: var(--danger); color: white; }
+
+  /* iOS Install Hint */
+  #iosInstallHint {
+    display: none; position: fixed; inset: 0;
+    background: var(--overlay); z-index: 1500;
+    align-items: flex-end; justify-content: center;
+    padding: 20px;
+  }
+  #iosInstallHint.show { display: flex; }
+  #iosInstallHint .ios-card {
+    background: var(--card); border-radius: 20px; padding: 24px;
+    max-width: 400px; width: 100%; text-align: center;
+    animation: slideUp 0.4s;
+  }
+  #iosInstallHint .ios-arrow { font-size: 2rem; margin-bottom: 12px; }
+  #iosInstallHint h3 { margin-bottom: 10px; font-size: 1.1rem; }
+  #iosInstallHint p { color: var(--muted); font-size: 0.85rem; line-height: 1.8; margin-bottom: 16px; }
+  #iosInstallHint button { width: 100%; }
 </style>
 </head>
 <body>
@@ -454,7 +526,6 @@
 
 <div class="main">
 
-  <!-- AUTH VIEW -->
   <div class="view active" id="view-auth">
     <div class="auth-container">
       <div class="auth-card">
@@ -544,7 +615,6 @@
     </div>
   </div>
 
-  <!-- CREATE VIEW -->
   <div class="view" id="view-create">
     <div class="create-layout">
       <div>
@@ -666,7 +736,6 @@
     </div>
   </div>
 
-  <!-- LIST VIEW -->
   <div class="view" id="view-list">
     <div class="stats-row">
       <div class="stat-box"><div class="num" id="sTotal">0</div><div class="lbl">إجمالي الرموز</div></div>
@@ -677,7 +746,6 @@
     <div id="list"></div>
   </div>
 
-  <!-- DETAIL VIEW -->
   <div class="view" id="view-detail">
     <div class="detail-view">
       <button class="btn-sec btn-sm" onclick="switchView('list')" style="margin-bottom:16px;">← رجوع</button>
@@ -703,7 +771,6 @@
     </div>
   </div>
 
-  <!-- ACCOUNTS VIEW -->
   <div class="view" id="view-accounts">
     <div class="card">
       <h2>👥 كل الحسابات المسجلة</h2>
@@ -713,7 +780,6 @@
   </div>
 </div>
 
-<!-- SUCCESS MODAL -->
 <div class="modal-overlay" id="successModal">
   <div class="modal success-modal">
     <button class="modal-close-x" onclick="closeSuccessModal()">✕</button>
@@ -729,7 +795,6 @@
   </div>
 </div>
 
-<!-- DOWNLOAD MODAL -->
 <div class="modal-overlay" id="downloadModal">
   <div class="modal">
     <button class="modal-close-x" onclick="closeDownloadModal()">✕</button>
@@ -744,7 +809,6 @@
   </div>
 </div>
 
-<!-- DELETE MODAL -->
 <div class="modal-overlay" id="deleteModal">
   <div class="modal">
     <button class="modal-close-x" onclick="closeDeleteModal()">✕</button>
@@ -754,7 +818,6 @@
   </div>
 </div>
 
-<!-- SETTINGS MODAL -->
 <div class="modal-overlay" id="settingsModal">
   <div class="modal" style="max-width:520px;">
     <button class="modal-close-x" onclick="closeSettings()">✕</button>
@@ -779,7 +842,6 @@
   </div>
 </div>
 
-<!-- USER MENU -->
 <div class="modal-overlay" id="userMenuModal">
   <div class="modal" style="max-width:380px;">
     <button class="modal-close-x" onclick="closeUserMenu()">✕</button>
@@ -793,6 +855,27 @@
       <button onclick="openSettings();closeUserMenu();">⚙️ الإعدادات</button>
       <button class="btn-danger" onclick="doLogout()">🚪 تسجيل خروج</button>
     </div>
+  </div>
+</div>
+
+<!-- PWA Install Banner -->
+<div id="installBanner">
+  <div class="install-icon">📱</div>
+  <div class="install-text">
+    <div class="install-title">ثبّت التطبيق</div>
+    <div class="install-sub">افتح QR Studio كتطبيق على موبايلك</div>
+  </div>
+  <button onclick="installPWA()">تثبيت</button>
+  <button class="install-close" onclick="dismissInstall()">✕</button>
+</div>
+
+<!-- iOS Install Hint -->
+<div id="iosInstallHint" onclick="if(event.target===this)closeIosHint()">
+  <div class="ios-card">
+    <div class="ios-arrow">⬆️</div>
+    <h3>ثبّت التطبيق على الآيفون</h3>
+    <p>1. اضغط زر المشاركة (مربع بسهم) في Safari<br>2. اختر <strong>"إضافة إلى الشاشة الرئيسية"</strong><br>3. اضغط "إضافة"</p>
+    <button onclick="closeIosHint()">فهمت</button>
   </div>
 </div>
 
@@ -816,6 +899,7 @@ var savedLinkForModal = null;
 var currentTheme = 'light';
 var pendingRegistration = null;
 var adminViewingUserId = null;
+var deferredInstallPrompt = null;
 
 var design = {
   colorDark: '#1e293b', colorLight: '#ffffff', colorGrad: '#8b5cf6',
@@ -838,6 +922,64 @@ var THEMES = [
 var COLOR_LABELS = { primary:'الأساسي', primaryDark:'الأساسي الغامق', secondary:'الثانوي', bg:'الخلفية', card:'البطاقات', text:'النص', muted:'النص الباهت', border:'الحدود', hover:'التحويم' };
 var EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 var BLOCKED_DOMAINS = ['test.com','example.com','fake.com','abc.com','xyz.com','asd.com','aa.com','test.test'];
+
+/* ========== PWA INSTALL ========== */
+window.addEventListener('beforeinstallprompt', function(e) {
+  e.preventDefault();
+  deferredInstallPrompt = e;
+  // عرض البانر بعد 3 ثواني
+  setTimeout(function() {
+    if (!localStorage.getItem('pwa_install_dismissed')) {
+      document.getElementById('installBanner').classList.add('show');
+    }
+  }, 3000);
+});
+
+function installPWA() {
+  if (!deferredInstallPrompt) return;
+  deferredInstallPrompt.prompt();
+  deferredInstallPrompt.userChoice.then(function(choice) {
+    if (choice.outcome === 'accepted') {
+      toast('✅ تم تثبيت التطبيق!', 'ok');
+    }
+    deferredInstallPrompt = null;
+    document.getElementById('installBanner').classList.remove('show');
+  });
+}
+
+function dismissInstall() {
+  document.getElementById('installBanner').classList.remove('show');
+  localStorage.setItem('pwa_install_dismissed', '1');
+}
+
+// كشف iOS لعرض تعليمات التثبيت
+function isIOS() {
+  return /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+}
+function isStandalone() {
+  return window.matchMedia('(display-mode: standalone)').matches ||
+         window.navigator.standalone === true;
+}
+window.addEventListener('load', function() {
+  if (isIOS() && !isStandalone() && !localStorage.getItem('ios_hint_shown')) {
+    setTimeout(function() {
+      document.getElementById('iosInstallHint').classList.add('show');
+      localStorage.setItem('ios_hint_shown', '1');
+    }, 3000);
+  }
+});
+function closeIosHint() {
+  document.getElementById('iosInstallHint').classList.remove('show');
+}
+
+// تسجيل Service Worker
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', function() {
+    navigator.serviceWorker.register('./service-worker.js')
+      .then(function(reg) { console.log('SW registered:', reg.scope); })
+      .catch(function(err) { console.warn('SW failed:', err); });
+  });
+}
 
 /* ========== TOAST ========== */
 var toastTimer;
@@ -911,6 +1053,9 @@ function applyTheme(themeId, customVars) {
   if (t) t.classList.toggle('active', themeId==='dark');
   var tb = document.getElementById('themeToggleBtn');
   if (tb) tb.textContent = themeId==='dark' ? '☀️' : '🌙';
+  // تحديث شريط المتصفح
+  var metaTheme = document.querySelector('meta[name="theme-color"]');
+  if (metaTheme && vars.bg) metaTheme.setAttribute('content', vars.bg);
 }
 function applyVarsToDOM(vars) {
   var root = document.documentElement;
@@ -1761,7 +1906,6 @@ function deleteAccount(userId) {
   toast('🗑️ تم حذف الحساب', 'err');
 }
 
-/* الأدمن يشوف رموز أي مستخدم */
 function adminViewUserQRs(userId) {
   loadDB();
   var user = db.accounts.find(function(a){return a.id===userId;});
