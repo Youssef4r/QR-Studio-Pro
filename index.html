@@ -1,0 +1,1838 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>QR Studio Pro</title>
+<script src="https://unpkg.com/qr-code-styling@1.5.0/lib/qr-code-styling.js"></script>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --primary: #6366f1; --primary-dark: #4f46e5; --secondary: #8b5cf6;
+    --success: #10b981; --danger: #ef4444; --warning: #f59e0b;
+    --bg: #f1f5f9; --card: #ffffff; --text: #1e293b; --muted: #64748b;
+    --border: #e2e8f0; --hover: #f8fafc; --shadow: rgba(0,0,0,0.06);
+    --shadow-lg: rgba(0,0,0,0.15); --overlay: rgba(0,0,0,0.6);
+    --preview-bg: linear-gradient(135deg, #f8fafc, #e0e7ff);
+  }
+  html, body { height: 100%; overflow: hidden; }
+  body {
+    font-family: 'Segoe UI', Tahoma, sans-serif;
+    background: var(--bg); color: var(--text);
+    display: flex; flex-direction: column; transition: background 0.3s;
+  }
+  header {
+    background: linear-gradient(135deg, var(--primary), var(--secondary));
+    color: white; padding: 12px 20px;
+    display: flex; justify-content: space-between; align-items: center;
+    box-shadow: 0 4px 20px var(--shadow-lg); flex-shrink: 0; z-index: 100;
+  }
+  .header-left h1 { font-size: 1.15rem; }
+  .header-left .subtitle { font-size: 0.7rem; opacity: 0.9; }
+  .header-right { display: flex; gap: 8px; align-items: center; }
+  .header-btn {
+    background: rgba(255,255,255,0.2); color: white; border: none;
+    width: 38px; height: 38px; border-radius: 10px; font-size: 1.1rem;
+    cursor: pointer; transition: 0.2s; display: flex;
+    align-items: center; justify-content: center;
+  }
+  .header-btn:hover { background: rgba(255,255,255,0.35); transform: scale(1.05); }
+  .user-badge {
+    background: rgba(255,255,255,0.2); color: white;
+    padding: 8px 14px; border-radius: 20px; font-size: 0.8rem;
+    font-weight: 700; display: flex; align-items: center; gap: 6px;
+    cursor: pointer; transition: 0.2s;
+  }
+  .user-badge:hover { background: rgba(255,255,255,0.35); }
+  .nav-tabs {
+    display: flex; background: var(--card); border-bottom: 2px solid var(--border);
+    flex-shrink: 0; overflow-x: auto;
+  }
+  .nav-tab {
+    flex: 1; min-width: 100px; padding: 12px; text-align: center;
+    cursor: pointer; transition: 0.2s; border-bottom: 3px solid transparent;
+    margin-bottom: -2px; font-size: 0.85rem; font-weight: 600;
+    color: var(--muted); user-select: none; display: flex;
+    align-items: center; justify-content: center; gap: 6px; white-space: nowrap;
+  }
+  .nav-tab:hover { background: var(--hover); }
+  .nav-tab.active { color: var(--primary); border-bottom-color: var(--primary); background: var(--hover); }
+  .page-title {
+    background: var(--card); padding: 14px 20px; border-bottom: 1px solid var(--border);
+    font-size: 1rem; font-weight: 700; color: var(--text);
+    display: flex; align-items: center; gap: 8px; flex-shrink: 0;
+  }
+  .main { flex: 1; overflow-y: auto; overflow-x: hidden; padding: 16px; background: var(--bg); }
+  .view { display: none; max-width: 1200px; margin: 0 auto; }
+  .view.active { display: block; animation: fadeIn 0.25s; }
+  @keyframes fadeIn { from{opacity:0;transform:translateY(8px);} to{opacity:1;transform:translateY(0);} }
+  .card {
+    background: var(--card); padding: 20px; border-radius: 16px;
+    box-shadow: 0 4px 20px var(--shadow); margin-bottom: 16px;
+  }
+  .card h2 { font-size: 1rem; margin-bottom: 14px; display: flex; align-items: center; gap: 8px; }
+  .field { margin-bottom: 14px; }
+  .field label { display: block; font-size: 0.8rem; font-weight: 600; margin-bottom: 6px; color: var(--muted); }
+  .field input[type="text"], .field input[type="url"], .field input[type="email"],
+  .field input[type="password"], .field select {
+    width: 100%; padding: 11px 12px; border: 2px solid var(--border);
+    border-radius: 10px; font-size: 0.9rem; font-family: inherit;
+    transition: 0.2s; background: var(--bg); color: var(--text);
+  }
+  .field input:focus, .field select:focus { outline: none; border-color: var(--primary); background: var(--card); }
+  .field .help { font-size: 0.7rem; color: var(--muted); margin-top: 4px; }
+  .field .error-msg { font-size: 0.75rem; color: var(--danger); margin-top: 4px; display: none; }
+  .field.error input { border-color: var(--danger); }
+  .field.error .error-msg { display: block; }
+  .field.success input { border-color: var(--success); }
+  .icon-tabs {
+    display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px;
+    background: var(--bg); padding: 6px; border-radius: 12px; margin-bottom: 16px;
+  }
+  .icon-tab {
+    display: flex; flex-direction: column; align-items: center; gap: 4px;
+    padding: 10px 4px; border-radius: 8px; cursor: pointer; transition: 0.2s;
+    user-select: none; color: var(--muted); font-size: 0.65rem; font-weight: 600;
+  }
+  .icon-tab .ico { font-size: 1.3rem; }
+  .icon-tab.active { background: var(--card); color: var(--primary); box-shadow: 0 2px 8px var(--shadow); }
+  .tab-panel { display: none; }
+  .tab-panel.active { display: block; animation: fadeIn 0.2s; }
+  .color-row { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; }
+  .color-row input[type="color"] {
+    width: 50px; height: 42px; border: 2px solid var(--border);
+    border-radius: 10px; cursor: pointer; padding: 2px; background: var(--card);
+  }
+  .color-row .val { font-family: monospace; font-size: 0.8rem; color: var(--muted); flex: 1; direction: ltr; text-align: left; }
+  .presets { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 8px; }
+  .preset {
+    width: 34px; height: 34px; border-radius: 50%; cursor: pointer;
+    border: 3px solid transparent; transition: 0.2s;
+  }
+  .preset:hover { transform: scale(1.15); border-color: var(--card); box-shadow: 0 0 0 2px var(--primary); }
+  .gradient-presets { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 8px; }
+  .gradient-preset {
+    height: 50px; border-radius: 12px; cursor: pointer;
+    border: 3px solid transparent; transition: 0.2s;
+  }
+  .gradient-preset:hover { transform: scale(1.05); border-color: var(--card); box-shadow: 0 0 0 2px var(--primary); }
+  .gradient-preset.active { border-color: var(--primary); box-shadow: 0 0 0 2px var(--primary); }
+  .shape-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 12px; }
+  .shape-option {
+    padding: 10px 6px; background: var(--bg); border: 2px solid transparent;
+    border-radius: 10px; text-align: center; cursor: pointer;
+    font-size: 0.7rem; font-weight: 600; color: var(--muted); transition: 0.2s;
+    display: flex; flex-direction: column; align-items: center; gap: 4px;
+  }
+  .shape-option .preview-shape { width: 24px; height: 24px; background: var(--text); }
+  .shape-option:hover { background: var(--card); border-color: var(--border); }
+  .shape-option.active { background: var(--card); border-color: var(--primary); color: var(--primary); }
+  .shape-option.active .preview-shape { background: var(--primary); }
+  .ps-square { border-radius: 0; }
+  .ps-rounded { border-radius: 6px; }
+  .ps-dots { border-radius: 50%; }
+  .ps-classy { border-radius: 6px 0 6px 0; }
+  .ps-classy-rounded { border-radius: 50% 0 50% 0; }
+  .ps-extra-rounded { border-radius: 50%; }
+  .ps-corner-square { border-radius: 0; border: 3px solid; background: transparent !important; }
+  .ps-corner-dot { border-radius: 50%; border: 3px solid; background: transparent !important; }
+  .ps-corner-extra-rounded { border-radius: 8px; border: 3px solid; background: transparent !important; }
+  .slider-field { margin-bottom: 14px; }
+  .slider-field label { display: flex; justify-content: space-between; font-size: 0.8rem; font-weight: 600; margin-bottom: 6px; color: var(--muted); }
+  .slider-field label span { color: var(--primary); font-weight: 700; }
+  input[type="range"] { width: 100%; accent-color: var(--primary); height: 6px; }
+  .upload-box {
+    border: 2px dashed var(--border); border-radius: 12px; padding: 20px;
+    text-align: center; cursor: pointer; transition: 0.2s; background: var(--bg);
+  }
+  .upload-box:hover { border-color: var(--primary); background: var(--card); }
+  .upload-box.has-image { padding: 10px; border-style: solid; border-color: var(--success); background: var(--card); }
+  .upload-box img { max-width: 80px; max-height: 80px; border-radius: 8px; display: block; margin: 0 auto 6px; object-fit: contain; }
+  .upload-box .txt { font-size: 0.8rem; color: var(--muted); }
+  button {
+    padding: 12px 20px; background: linear-gradient(135deg, var(--primary), var(--secondary));
+    color: white; border: none; border-radius: 10px; font-size: 0.9rem;
+    font-weight: 700; cursor: pointer; font-family: inherit; transition: 0.2s;
+  }
+  button:hover { transform: translateY(-1px); box-shadow: 0 6px 18px var(--shadow-lg); }
+  button:active { transform: translateY(0); }
+  button:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+  .btn-full { width: 100%; }
+  .btn-sec { background: var(--bg); color: var(--text); border: 2px solid var(--border); }
+  .btn-sec:hover { background: var(--card); border-color: var(--primary); box-shadow: none; }
+  .btn-danger { background: #fee2e2; color: #991b1b; }
+  .btn-danger:hover { filter: brightness(0.95); }
+  .btn-sm { padding: 8px 12px; font-size: 0.8rem; }
+  .preview-area {
+    background: var(--preview-bg); padding: 24px; border-radius: 16px;
+    display: flex; align-items: center; justify-content: center;
+    min-height: 320px; margin-bottom: 14px;
+    border: 3px dashed var(--border); position: relative;
+  }
+  .preview-area.empty { color: var(--muted); font-size: 0.9rem; flex-direction: column; gap: 8px; }
+  .preview-area.empty .icon { font-size: 3rem; opacity: 0.4; }
+  .create-layout { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; align-items: start; }
+  @media (max-width: 900px) { .create-layout { grid-template-columns: 1fr; } }
+  .create-layout .preview-col { position: sticky; top: 0; }
+  .save-actions {
+    background: var(--card); padding: 16px; border-radius: 12px;
+    box-shadow: 0 4px 20px var(--shadow);
+    display: flex; flex-direction: column; gap: 10px;
+  }
+  .search-bar { position: relative; margin-bottom: 16px; }
+  .search-bar input {
+    width: 100%; padding: 12px 44px 12px 14px;
+    border: 2px solid var(--border); border-radius: 12px;
+    font-size: 0.95rem; font-family: inherit; background: var(--card);
+    color: var(--text); transition: 0.2s;
+  }
+  .search-bar input:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 4px rgba(99,102,241,0.1); }
+  .search-bar .search-icon {
+    position: absolute; right: 14px; top: 50%; transform: translateY(-50%);
+    font-size: 1.1rem; color: var(--muted); pointer-events: none;
+  }
+  .stats-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 16px; }
+  .stat-box {
+    background: var(--card); padding: 14px; border-radius: 12px;
+    text-align: center; box-shadow: 0 4px 12px var(--shadow);
+  }
+  .stat-box .num { font-size: 1.5rem; font-weight: 800; color: var(--primary); }
+  .stat-box .lbl { font-size: 0.7rem; color: var(--muted); }
+  .link-card {
+    background: var(--card); padding: 16px; border-radius: 14px;
+    box-shadow: 0 2px 12px var(--shadow); margin-bottom: 12px;
+    display: flex; gap: 14px; align-items: center;
+    transition: 0.2s; cursor: pointer;
+  }
+  .link-card:hover { transform: translateY(-2px); box-shadow: 0 8px 20px var(--shadow-lg); }
+  .link-thumb {
+    width: 70px; height: 70px; background: var(--bg); border-radius: 10px;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0; overflow: visible; border: 2px solid var(--border);
+    position: relative;
+  }
+  .link-thumb canvas, .link-thumb svg { width: 100% !important; height: 100% !important; border-radius: 8px; }
+  .link-thumb .empty-thumb { font-size: 1.5rem; opacity: 0.4; }
+  .link-icon-badge {
+    position: absolute; top: -8px; left: -8px;
+    width: 26px; height: 26px; border-radius: 50%;
+    background: var(--card); border: 2px solid var(--border);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 0.8rem; z-index: 5; box-shadow: 0 2px 6px var(--shadow);
+  }
+  .link-info { flex: 1; min-width: 0; }
+  .link-info h3 { font-size: 0.95rem; margin-bottom: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .link-info .url {
+    font-size: 0.75rem; color: var(--muted); font-family: monospace;
+    direction: ltr; text-align: right; white-space: nowrap;
+    overflow: hidden; text-overflow: ellipsis; margin-bottom: 4px;
+  }
+  .link-info .meta { display: flex; gap: 8px; font-size: 0.7rem; color: var(--muted); }
+  .link-info .meta span { background: var(--bg); padding: 2px 8px; border-radius: 10px; }
+  .link-actions { display: flex; gap: 6px; flex-shrink: 0; }
+  .link-actions button { padding: 8px 10px; font-size: 1rem; min-width: 38px; }
+  .btn-icon-view { background: #dbeafe; color: #1e40af; }
+  .btn-icon-edit { background: #fef3c7; color: #92400e; }
+  .btn-icon-del { background: #fee2e2; color: #991b1b; }
+  .empty-state { text-align: center; padding: 60px 20px; color: var(--muted); }
+  .empty-state .icon { font-size: 4rem; margin-bottom: 12px; opacity: 0.4; }
+  .empty-state h3 { font-size: 1.1rem; margin-bottom: 6px; color: var(--text); }
+  .empty-state p { font-size: 0.85rem; }
+  .modal-overlay {
+    display: none; position: fixed; inset: 0;
+    background: var(--overlay); backdrop-filter: blur(6px);
+    z-index: 1000; align-items: center; justify-content: center; padding: 20px;
+  }
+  .modal-overlay.active { display: flex; }
+  .modal {
+    background: var(--card); padding: 24px; border-radius: 20px;
+    max-width: 480px; width: 100%; box-shadow: 0 20px 60px var(--shadow-lg);
+    max-height: 90vh; overflow-y: auto;
+    animation: modalIn 0.25s; position: relative; color: var(--text);
+  }
+  @keyframes modalIn { from{opacity:0;transform:scale(0.9);} to{opacity:1;transform:scale(1);} }
+  .modal h3 { margin-bottom: 16px; font-size: 1.15rem; display: flex; align-items: center; gap: 8px; }
+  .modal-actions { display: flex; gap: 10px; margin-top: 20px; }
+  .modal-actions button { flex: 1; }
+  .modal-close-x {
+    position: absolute; top: 12px; left: 12px;
+    width: 32px; height: 32px; border-radius: 50%;
+    background: var(--bg); color: var(--muted); border: none;
+    font-size: 1.2rem; cursor: pointer; display: flex;
+    align-items: center; justify-content: center; transition: 0.2s; z-index: 10; padding: 0;
+  }
+  .modal-close-x:hover { background: var(--danger); color: white; transform: rotate(90deg); }
+  .success-modal .success-icon {
+    width: 70px; height: 70px; background: linear-gradient(135deg, #d1fae5, #a7f3d0);
+    border-radius: 50%; display: flex; align-items: center; justify-content: center;
+    font-size: 2rem; margin: 0 auto 16px; animation: popIn 0.4s;
+  }
+  @keyframes popIn { 0%{transform:scale(0);} 70%{transform:scale(1.2);} 100%{transform:scale(1);} }
+  .success-modal .success-title { text-align: center; font-size: 1.15rem; font-weight: 700; margin-bottom: 6px; }
+  .success-modal .success-sub { text-align: center; font-size: 0.85rem; color: var(--muted); margin-bottom: 20px; }
+  .saved-qr-preview {
+    background: var(--bg); padding: 16px; border-radius: 12px;
+    display: flex; align-items: center; justify-content: center; margin-bottom: 16px;
+    min-height: 220px;
+  }
+  .success-actions { display: flex; flex-direction: column; gap: 10px; }
+  .download-options { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .download-btn {
+    background: var(--bg); color: var(--text); border: 2px solid var(--border);
+    padding: 12px; border-radius: 10px; font-size: 0.85rem; font-weight: 600;
+    cursor: pointer; display: flex; flex-direction: column; align-items: center; gap: 4px;
+    transition: 0.2s;
+  }
+  .download-btn:hover { background: var(--card); border-color: var(--primary); color: var(--primary); }
+  .download-btn .fmt-icon { font-size: 1.5rem; }
+  .download-btn .fmt-name { font-size: 0.7rem; opacity: 0.7; }
+  .detail-view { max-width: 600px; margin: 0 auto; }
+  .detail-header { text-align: center; margin-bottom: 20px; }
+  .detail-header h2 { font-size: 1.3rem; margin-bottom: 6px; }
+  .detail-header .detail-url {
+    font-size: 0.8rem; color: var(--muted); font-family: monospace;
+    direction: ltr; word-break: break-all;
+  }
+  .detail-qr-box {
+    background: var(--preview-bg); padding: 24px; border-radius: 20px;
+    display: flex; align-items: center; justify-content: center;
+    margin-bottom: 16px; min-height: 340px;
+  }
+  .detail-meta { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 16px; }
+  .detail-meta-box {
+    background: var(--card); padding: 14px; border-radius: 12px;
+    text-align: center; box-shadow: 0 2px 8px var(--shadow);
+  }
+  .detail-meta-box .val { font-size: 1.3rem; font-weight: 800; color: var(--primary); }
+  .detail-meta-box .lbl { font-size: 0.7rem; color: var(--muted); }
+  .settings-section { margin-bottom: 20px; }
+  .settings-section h4 { font-size: 0.85rem; font-weight: 700; color: var(--muted); margin-bottom: 10px; text-transform: uppercase; }
+  .theme-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+  .theme-card {
+    padding: 12px; border-radius: 12px; cursor: pointer;
+    border: 3px solid var(--border); transition: 0.2s;
+    display: flex; flex-direction: column; align-items: center; gap: 8px;
+    background: var(--bg);
+  }
+  .theme-card:hover { transform: translateY(-2px); }
+  .theme-card.active { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(99,102,241,0.2); }
+  .theme-preview { width: 100%; height: 40px; border-radius: 8px; display: flex; overflow: hidden; }
+  .theme-preview .swatch { flex: 1; }
+  .theme-card .theme-name { font-size: 0.75rem; font-weight: 700; color: var(--text); }
+  .toggle-row {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 12px; background: var(--bg); border-radius: 10px; margin-bottom: 8px;
+  }
+  .toggle-row .toggle-label { font-size: 0.85rem; font-weight: 600; }
+  .toggle-switch {
+    position: relative; width: 48px; height: 26px;
+    background: var(--border); border-radius: 13px; cursor: pointer; transition: 0.3s;
+  }
+  .toggle-switch::after {
+    content: ''; position: absolute; top: 2px; right: 2px;
+    width: 22px; height: 22px; background: white; border-radius: 50%;
+    transition: 0.3s; box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+  }
+  .toggle-switch.active { background: var(--primary); }
+  .toggle-switch.active::after { right: calc(100% - 24px); }
+  .auth-container { max-width: 440px; margin: 40px auto; padding: 0 16px; }
+  .auth-card {
+    background: var(--card); padding: 32px; border-radius: 20px;
+    box-shadow: 0 10px 40px var(--shadow-lg);
+  }
+  .auth-header { text-align: center; margin-bottom: 24px; }
+  .auth-header .auth-icon {
+    width: 70px; height: 70px; border-radius: 50%;
+    background: linear-gradient(135deg, var(--primary), var(--secondary));
+    display: flex; align-items: center; justify-content: center;
+    font-size: 2rem; margin: 0 auto 16px; color: white;
+  }
+  .auth-header h2 { font-size: 1.3rem; margin-bottom: 6px; }
+  .auth-header p { font-size: 0.85rem; color: var(--muted); }
+  .auth-switch { text-align: center; margin-top: 16px; font-size: 0.85rem; color: var(--muted); }
+  .auth-switch a { color: var(--primary); font-weight: 700; cursor: pointer; text-decoration: none; }
+  .auth-links { display: flex; justify-content: space-between; margin-top: 12px; font-size: 0.8rem; }
+  .auth-links a { color: var(--primary); font-weight: 600; cursor: pointer; }
+  .code-inputs { display: flex; gap: 8px; justify-content: center; margin: 20px 0; direction: ltr; }
+  .code-inputs input {
+    width: 48px; height: 56px; text-align: center;
+    font-size: 1.5rem; font-weight: 700;
+    border: 2px solid var(--border); border-radius: 10px;
+    background: var(--bg); color: var(--text); font-family: inherit;
+  }
+  .code-inputs input:focus { outline: none; border-color: var(--primary); background: var(--card); box-shadow: 0 0 0 3px rgba(99,102,241,0.2); }
+  .info-box {
+    padding: 12px; border-radius: 10px; margin-bottom: 16px;
+    font-size: 0.8rem; line-height: 1.6;
+    background: #dbeafe; color: #1e40af; border: 1px solid #93c5fd;
+  }
+  .info-box.warn { background: #fef3c7; color: #92400e; border-color: #fcd34d; }
+  .info-box.success { background: #d1fae5; color: #065f46; border-color: #6ee7b7; }
+  .account-card {
+    background: var(--card); padding: 16px; border-radius: 14px;
+    box-shadow: 0 2px 12px var(--shadow); margin-bottom: 12px;
+    display: flex; gap: 14px; align-items: flex-start; flex-wrap: wrap;
+  }
+  .account-avatar {
+    width: 56px; height: 56px; border-radius: 50%;
+    background: linear-gradient(135deg, var(--primary), var(--secondary));
+    display: flex; align-items: center; justify-content: center;
+    color: white; font-size: 1.3rem; font-weight: 700; flex-shrink: 0;
+  }
+  .account-info { flex: 1; min-width: 0; }
+  .account-info h3 { font-size: 0.95rem; margin-bottom: 4px; display: flex; align-items: center; flex-wrap: wrap; gap: 4px; }
+  .account-info .email { font-size: 0.8rem; color: var(--muted); }
+  .account-info .stats { display: flex; gap: 8px; margin-top: 6px; font-size: 0.7rem; color: var(--muted); flex-wrap: wrap; }
+  .account-info .stats span { background: var(--bg); padding: 2px 8px; border-radius: 10px; }
+  .status-badge { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 0.65rem; font-weight: 700; }
+  .status-active { background: #d1fae5; color: #065f46; }
+  .status-disabled { background: #fef3c7; color: #92400e; }
+  .status-banned { background: #fee2e2; color: #991b1b; }
+  .admin-crown { display: inline-block; font-size: 0.9rem; animation: crownPulse 2s infinite; }
+  @keyframes crownPulse { 0%,100%{transform:scale(1);} 50%{transform:scale(1.15);} }
+  .account-actions-row { display: flex; gap: 6px; margin-top: 10px; flex-wrap: wrap; width: 100%; }
+  .account-actions-row button { padding: 6px 10px; font-size: 0.72rem; min-width: auto; }
+  .btn-icon-admin { background: #ede9fe; color: #5b21b6; }
+  .btn-icon-disable { background: #fef3c7; color: #92400e; }
+  .btn-icon-ban { background: #fee2e2; color: #991b1b; }
+  .btn-icon-unban { background: #d1fae5; color: #065f46; }
+  .custom-color-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 12px; }
+  .custom-color-item { display: flex; align-items: center; gap: 6px; background: var(--bg); padding: 6px; border-radius: 8px; }
+  .custom-color-item label { font-size: 0.7rem; font-weight: 600; color: var(--muted); flex: 1; margin: 0; }
+  .custom-color-item input[type="color"] { width: 32px; height: 32px; border: 2px solid var(--border); border-radius: 8px; cursor: pointer; padding: 1px; background: var(--card); }
+  .color-editor-section { background: var(--bg); padding: 12px; border-radius: 10px; margin-top: 12px; }
+  .reset-theme-btn { background: var(--card); color: var(--text); border: 2px solid var(--border); padding: 8px 12px; border-radius: 8px; font-size: 0.75rem; font-weight: 600; cursor: pointer; margin-top: 10px; width: 100%; }
+  .reset-theme-btn:hover { border-color: var(--primary); }
+  #toast {
+    position: fixed; bottom: 24px; left: 50%;
+    transform: translateX(-50%) translateY(100px);
+    background: var(--text); color: var(--card);
+    padding: 12px 22px; border-radius: 10px;
+    font-weight: 600; font-size: 0.85rem;
+    transition: 0.3s; z-index: 2000; max-width: 90%; text-align: center;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+  }
+  #toast.show { transform: translateX(-50%) translateY(0); }
+  #toast.ok { background: var(--success); color: white; }
+  #toast.err { background: var(--danger); color: white; }
+  #toast.info { background: var(--primary); color: white; }
+  .password-strength { height: 4px; border-radius: 2px; background: var(--border); margin-top: 6px; overflow: hidden; }
+  .password-strength-bar { height: 100%; width: 0%; transition: 0.3s; background: var(--danger); }
+  .password-strength.weak .password-strength-bar { width: 33%; background: var(--danger); }
+  .password-strength.medium .password-strength-bar { width: 66%; background: var(--warning); }
+  .password-strength.strong .password-strength-bar { width: 100%; background: var(--success); }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="header-left">
+    <div>
+      <h1>🎨 QR Studio Pro</h1>
+      <div class="subtitle" id="headerSubtitle">صمّم • عاين • احفظ</div>
+    </div>
+  </div>
+  <div class="header-right">
+    <button class="header-btn" onclick="openSettings()" title="الإعدادات" id="settingsBtn" style="display:none;">⚙️</button>
+    <button class="header-btn" onclick="toggleThemeQuick()" id="themeToggleBtn" title="تبديل سريع فاتح/داكن">🌙</button>
+    <div class="user-badge" id="userBadge" onclick="openUserMenu()" style="display:none;">
+      <span id="userBadgeName">👤</span>
+    </div>
+  </div>
+</header>
+
+<div class="nav-tabs" id="navTabs" style="display:none;">
+  <div class="nav-tab active" onclick="switchView('create', this)"><span class="ico">➕</span><span>إنشاء</span></div>
+  <div class="nav-tab" onclick="switchView('list', this)"><span class="ico">📋</span><span>رموزي</span></div>
+  <div class="nav-tab" onclick="switchView('accounts', this)" id="accountsTab" style="display:none;"><span class="ico">👥</span><span>الحسابات</span></div>
+</div>
+
+<div class="page-title" id="pageTitle" style="display:none;">
+  <span class="icon" id="pageTitleIcon">➕</span>
+  <span id="pageTitleText">إنشاء جديد</span>
+</div>
+
+<div class="main">
+
+  <!-- AUTH VIEW -->
+  <div class="view active" id="view-auth">
+    <div class="auth-container">
+      <div class="auth-card">
+        <div class="auth-header">
+          <div class="auth-icon" id="authIcon">🔐</div>
+          <h2 id="authTitle">تسجيل الدخول</h2>
+          <p id="authSubtitle">ادخل لحسابك عشان تحفظ رموزك</p>
+        </div>
+
+        <div id="loginForm">
+          <div class="field"><label>البريد الإلكتروني</label><input type="email" id="loginEmail" placeholder="you@example.com"></div>
+          <div class="field"><label>كلمة المرور</label><input type="password" id="loginPassword" placeholder="••••••••"></div>
+          <button class="btn-full" onclick="doLogin()" style="padding:14px;">🔓 دخول</button>
+          <div class="auth-links">
+            <a onclick="showForgotPassword()">🔑 نسيت كلمة المرور</a>
+            <a onclick="showForgotAccount()">📧 نسيت الحساب</a>
+          </div>
+          <div class="auth-switch">معندكش حساب؟ <a onclick="showRegister()">سجّل الآن</a></div>
+        </div>
+
+        <div id="registerForm" style="display:none;">
+          <div class="field"><label>الاسم</label><input type="text" id="regName" placeholder="اسمك"></div>
+          <div class="field">
+            <label>البريد الإلكتروني</label>
+            <input type="email" id="regEmail" placeholder="you@example.com">
+            <div class="error-msg" id="regEmailErr">إيميل غير صالح</div>
+          </div>
+          <div class="field">
+            <label>كلمة المرور</label>
+            <input type="password" id="regPassword" placeholder="6 أحرف على الأقل" oninput="checkPasswordStrength()">
+            <div class="password-strength" id="pwdStrength"><div class="password-strength-bar"></div></div>
+            <div class="help" id="pwdStrengthText">6 أحرف على الأقل</div>
+          </div>
+          <div class="field"><label>تأكيد كلمة المرور</label><input type="password" id="regPasswordConfirm" placeholder="أعد الكتابة"></div>
+          <div class="field">
+            <label>سؤال الأمان</label>
+            <select id="regSecurityQuestion">
+              <option value="">اختر سؤالًا...</option>
+              <option value="pet">ما اسم حيوانك الأليف الأول؟</option>
+              <option value="city">في أي مدينة وُلدت؟</option>
+              <option value="school">ما اسم مدرستك الابتدائية؟</option>
+              <option value="friend">من هو أفضل صديق في طفولتك؟</option>
+            </select>
+          </div>
+          <div class="field"><label>الإجابة</label><input type="text" id="regSecurityAnswer" placeholder="الإجابة السرية"></div>
+          <button class="btn-full" onclick="startEmailVerification()" style="padding:14px;">📧 التالي: تحقق من الإيميل</button>
+          <div class="auth-switch">عندك حساب؟ <a onclick="showLogin()">سجّل دخول</a></div>
+        </div>
+
+        <div id="verifyForm" style="display:none;">
+          <div class="info-box success">📧 تم إرسال كود تحقق إلى:<br><strong id="verifyEmailDisplay">—</strong></div>
+          <div class="info-box warn">⚠️ <strong>ملاحظة:</strong> التطبيق تجريبي — الكود يظهر هنا مباشرة.</div>
+          <div class="info-box" style="text-align:center;font-size:1.5rem;font-weight:800;letter-spacing:4px;" id="demoCodeDisplay">——————</div>
+          <p style="text-align:center;font-size:0.85rem;color:var(--muted);margin-bottom:10px;">أدخل الكود المكوّن من 6 أرقام:</p>
+          <div class="code-inputs" id="codeInputs">
+            <input type="text" maxlength="1" inputmode="numeric" oninput="moveCode(this,0)">
+            <input type="text" maxlength="1" inputmode="numeric" oninput="moveCode(this,1)">
+            <input type="text" maxlength="1" inputmode="numeric" oninput="moveCode(this,2)">
+            <input type="text" maxlength="1" inputmode="numeric" oninput="moveCode(this,3)">
+            <input type="text" maxlength="1" inputmode="numeric" oninput="moveCode(this,4)">
+            <input type="text" maxlength="1" inputmode="numeric" oninput="moveCode(this,5)">
+          </div>
+          <button class="btn-full" onclick="verifyAndRegister()" style="padding:14px;">✅ تحقق وأكمل التسجيل</button>
+          <div class="auth-switch"><a onclick="resendCode()">🔄 إعادة إرسال الكود</a> • <a onclick="showRegister()">← رجوع</a></div>
+        </div>
+
+        <div id="forgotPasswordForm" style="display:none;">
+          <div class="info-box">🔑 أدخل إيميلك وسؤال الأمان للإجابة عليه.</div>
+          <div class="field"><label>البريد الإلكتروني</label><input type="email" id="fpEmail" placeholder="you@example.com"></div>
+          <button class="btn-full" onclick="loadSecurityQuestion()" style="padding:14px;">التالي →</button>
+          <div id="fpStep2" style="display:none;margin-top:16px;">
+            <div class="field"><label>سؤال الأمان: <strong id="fpQuestion">—</strong></label><input type="text" id="fpAnswer" placeholder="الإجابة"></div>
+            <button class="btn-full" onclick="recoverPassword()" style="padding:14px;">🔓 استعادة كلمة المرور</button>
+            <div class="info-box success" id="fpResult" style="display:none;margin-top:16px;"></div>
+          </div>
+          <div class="auth-switch"><a onclick="showLogin()">← رجوع للدخول</a></div>
+        </div>
+
+        <div id="forgotAccountForm" style="display:none;">
+          <div class="info-box">📧 اكتب اسمك أو جزء من الإيميل للبحث عن حسابك.</div>
+          <div class="field"><label>ابحث عن حسابك</label><input type="text" id="faQuery" placeholder="اسم أو جزء من الإيميل"></div>
+          <button class="btn-full" onclick="findAccount()" style="padding:14px;">🔍 ابحث</button>
+          <div id="faResults" style="margin-top:16px;"></div>
+          <div class="auth-switch"><a onclick="showLogin()">← رجوع للدخول</a></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- CREATE VIEW -->
+  <div class="view" id="view-create">
+    <div class="create-layout">
+      <div>
+        <div class="card">
+          <h2>🔗 بيانات الرابط</h2>
+          <div class="field"><label>العنوان (للتنظيم والبحث)</label><input type="text" id="inLabel" placeholder="مثال: موقعي الشخصي" maxlength="50"></div>
+          <div class="field"><label>الرابط المستهدف</label><input type="text" id="inUrl" placeholder="https://example.com"><div class="help">💡 ده اللي هيفتح لما حد يمسح الـ QR</div></div>
+        </div>
+        <div class="card">
+          <h2>🎨 مكتبة التصميم</h2>
+          <div class="icon-tabs">
+            <div class="icon-tab active" onclick="switchTab('colors', this)"><span class="ico">🎨</span><span>ألوان</span></div>
+            <div class="icon-tab" onclick="switchTab('dots', this)"><span class="ico">⬤</span><span>نقاط</span></div>
+            <div class="icon-tab" onclick="switchTab('corners', this)"><span class="ico">◱</span><span>زوايا</span></div>
+            <div class="icon-tab" onclick="switchTab('logo', this)"><span class="ico">🖼️</span><span>شعار</span></div>
+            <div class="icon-tab" onclick="switchTab('size', this)"><span class="ico">📐</span><span>حجم</span></div>
+          </div>
+          <div class="tab-panel active" id="panel-colors">
+            <div class="field"><label>اللون الأساسي (النقاط)</label><div class="color-row"><input type="color" id="colorDark" value="#1e293b"><span class="val" id="colorDarkVal">#1e293b</span></div></div>
+            <div class="field"><label>لون الخلفية</label><div class="color-row"><input type="color" id="colorLight" value="#ffffff"><span class="val" id="colorLightVal">#ffffff</span></div></div>
+            <div class="field">
+              <label>تدرج لوني</label>
+              <label style="display:flex;align-items:center;gap:6px;font-size:0.8rem;cursor:pointer;color:var(--muted);margin-bottom:10px;"><input type="checkbox" id="useGradient" style="width:auto;"><span>تفعيل التدرج</span></label>
+              <div id="gradientOptions" style="display:none;">
+                <label style="font-size:0.75rem;color:var(--muted);display:block;margin-bottom:6px;">لون التدرج الثاني</label>
+                <div class="color-row"><input type="color" id="colorGrad" value="#8b5cf6"><span class="val" id="colorGradVal">#8b5cf6</span></div>
+                <label style="font-size:0.75rem;color:var(--muted);display:block;margin-bottom:6px;margin-top:10px;">تدرجات جاهزة</label>
+                <div class="gradient-presets">
+                  <div class="gradient-preset" style="background:linear-gradient(135deg,#6366f1,#ec4899);" onclick="applyGradient('#6366f1','#ec4899',this)"></div>
+                  <div class="gradient-preset" style="background:linear-gradient(135deg,#06b6d4,#3b82f6);" onclick="applyGradient('#06b6d4','#3b82f6',this)"></div>
+                  <div class="gradient-preset" style="background:linear-gradient(135deg,#10b981,#84cc16);" onclick="applyGradient('#10b981','#84cc16',this)"></div>
+                  <div class="gradient-preset" style="background:linear-gradient(135deg,#f59e0b,#ef4444);" onclick="applyGradient('#f59e0b','#ef4444',this)"></div>
+                  <div class="gradient-preset" style="background:linear-gradient(135deg,#8b5cf6,#06b6d4);" onclick="applyGradient('#8b5cf6','#06b6d4',this)"></div>
+                  <div class="gradient-preset" style="background:linear-gradient(135deg,#ec4899,#f59e0b);" onclick="applyGradient('#ec4899','#f59e0b',this)"></div>
+                  <div class="gradient-preset" style="background:linear-gradient(135deg,#0f172a,#6366f1);" onclick="applyGradient('#0f172a','#6366f1',this)"></div>
+                  <div class="gradient-preset" style="background:linear-gradient(135deg,#14b8a6,#f43f5e);" onclick="applyGradient('#14b8a6','#f43f5e',this)"></div>
+                  <div class="gradient-preset" style="background:linear-gradient(135deg,#facc15,#dc2626);" onclick="applyGradient('#facc15','#dc2626',this)"></div>
+                </div>
+              </div>
+            </div>
+            <div class="field"><label>ألوان جاهزة</label>
+              <div class="presets">
+                <div class="preset" style="background:#1e293b;" onclick="applyPreset('#1e293b','#ffffff')"></div>
+                <div class="preset" style="background:#6366f1;" onclick="applyPreset('#6366f1','#ffffff')"></div>
+                <div class="preset" style="background:#10b981;" onclick="applyPreset('#10b981','#ffffff')"></div>
+                <div class="preset" style="background:#ef4444;" onclick="applyPreset('#ef4444','#ffffff')"></div>
+                <div class="preset" style="background:#f59e0b;" onclick="applyPreset('#f59e0b','#ffffff')"></div>
+                <div class="preset" style="background:#06b6d4;" onclick="applyPreset('#06b6d4','#ffffff')"></div>
+                <div class="preset" style="background:#ec4899;" onclick="applyPreset('#ec4899','#ffffff')"></div>
+                <div class="preset" style="background:#8b5cf6;" onclick="applyPreset('#8b5cf6','#ffffff')"></div>
+                <div class="preset" style="background:#84cc16;" onclick="applyPreset('#84cc16','#ffffff')"></div>
+                <div class="preset" style="background:#f43f5e;" onclick="applyPreset('#f43f5e','#ffffff')"></div>
+                <div class="preset" style="background:#14b8a6;" onclick="applyPreset('#14b8a6','#ffffff')"></div>
+                <div class="preset" style="background:#7c3aed;" onclick="applyPreset('#7c3aed','#ffffff')"></div>
+              </div>
+            </div>
+          </div>
+          <div class="tab-panel" id="panel-dots">
+            <div class="field"><label>شكل النقاط</label>
+              <div class="shape-grid" id="dotsGrid">
+                <div class="shape-option active" data-type="square" onclick="pickShape('dots','square',this)"><div class="preview-shape ps-square"></div><span>مربع</span></div>
+                <div class="shape-option" data-type="rounded" onclick="pickShape('dots','rounded',this)"><div class="preview-shape ps-rounded"></div><span>دائري</span></div>
+                <div class="shape-option" data-type="dots" onclick="pickShape('dots','dots',this)"><div class="preview-shape ps-dots"></div><span>نقاط</span></div>
+                <div class="shape-option" data-type="classy" onclick="pickShape('dots','classy',this)"><div class="preview-shape ps-classy"></div><span>كلاسيكي</span></div>
+                <div class="shape-option" data-type="classy-rounded" onclick="pickShape('dots','classy-rounded',this)"><div class="preview-shape ps-classy-rounded"></div><span>كلاسيكي دائري</span></div>
+                <div class="shape-option" data-type="extra-rounded" onclick="pickShape('dots','extra-rounded',this)"><div class="preview-shape ps-extra-rounded"></div><span>دائري زائد</span></div>
+              </div>
+            </div>
+          </div>
+          <div class="tab-panel" id="panel-corners">
+            <div class="field"><label>شكل الزوايا الخارجية</label>
+              <div class="shape-grid" id="cornersSquareGrid">
+                <div class="shape-option active" data-type="square" onclick="pickShape('cornersSquare','square',this)"><div class="preview-shape ps-corner-square"></div><span>مربع</span></div>
+                <div class="shape-option" data-type="dot" onclick="pickShape('cornersSquare','dot',this)"><div class="preview-shape ps-corner-dot"></div><span>نقطة</span></div>
+                <div class="shape-option" data-type="extra-rounded" onclick="pickShape('cornersSquare','extra-rounded',this)"><div class="preview-shape ps-corner-extra-rounded"></div><span>دائري</span></div>
+              </div>
+            </div>
+            <div class="field"><label>شكل الزوايا الداخلية</label>
+              <div class="shape-grid" id="cornersDotGrid">
+                <div class="shape-option active" data-type="square" onclick="pickShape('cornersDot','square',this)"><div class="preview-shape ps-square"></div><span>مربع</span></div>
+                <div class="shape-option" data-type="dot" onclick="pickShape('cornersDot','dot',this)"><div class="preview-shape ps-dots"></div><span>نقطة</span></div>
+              </div>
+            </div>
+          </div>
+          <div class="tab-panel" id="panel-logo">
+            <div class="field"><label>شعار في المنتصف</label>
+              <div class="upload-box" id="uploadBox" onclick="document.getElementById('logoInput').click()">
+                <div class="icon" style="font-size:1.8rem;">📷</div><div class="txt">اضغط لاختيار صورة</div>
+              </div>
+              <input type="file" id="logoInput" accept="image/*" style="display:none">
+            </div>
+            <div class="slider-field"><label>حجم الشعار <span id="logoSizeVal">40%</span></label><input type="range" id="logoSize" min="15" max="50" value="40"></div>
+            <div class="slider-field"><label>هامش الشعار <span id="logoMarginVal">6px</span></label><input type="range" id="logoMargin" min="0" max="20" value="6"></div>
+            <div class="field"><label>فريم حول الشعار</label>
+              <div style="display:flex;align-items:center;gap:10px;"><input type="color" id="logoFrameColor" value="#6366f1" style="width:50px;height:42px;border:2px solid var(--border);border-radius:10px;cursor:pointer;padding:2px;"><span class="val" id="logoFrameColorVal" style="font-family:monospace;font-size:0.8rem;color:var(--muted);">#6366f1</span></div>
+              <label style="display:flex;align-items:center;gap:6px;margin-top:8px;font-size:0.8rem;cursor:pointer;color:var(--muted);"><input type="checkbox" id="useLogoFrame" style="width:auto;"><span>تفعيل الفريم</span></label>
+            </div>
+            <button class="btn-sec btn-full btn-sm" onclick="removeLogo()">🗑️ إزالة الشعار</button>
+          </div>
+          <div class="tab-panel" id="panel-size">
+            <div class="slider-field"><label>حجم الـ QR <span id="sizeVal">280px</span></label><input type="range" id="qrSize" min="200" max="500" value="280" step="20"></div>
+            <div class="slider-field"><label>الهامش الخارجي <span id="marginVal">10px</span></label><input type="range" id="margin" min="0" max="50" value="10"></div>
+            <div class="field"><label>مستوى التصحيح</label>
+              <select id="errorLevel"><option value="L">منخفض (L)</option><option value="M">متوسط (M)</option><option value="Q" selected>عالي (Q)</option><option value="H">أقصى (H)</option></select>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="preview-col">
+        <div class="card">
+          <h2>👀 معاينة حية</h2>
+          <div id="qrWrapper" class="preview-area empty"><div class="icon">📱</div><div>ادخل رابط وابدأ التصميم</div></div>
+        </div>
+        <div class="save-actions">
+          <button class="btn-full" id="saveBtn" onclick="saveQR()" style="padding:14px;font-size:1rem;">💾 حفظ الرمز</button>
+          <button class="btn-sec btn-full" onclick="resetForm()" style="padding:10px;font-size:0.85rem;">🔄 بدء جديد</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- LIST VIEW -->
+  <div class="view" id="view-list">
+    <div class="stats-row">
+      <div class="stat-box"><div class="num" id="sTotal">0</div><div class="lbl">إجمالي الرموز</div></div>
+      <div class="stat-box"><div class="num" id="sScans">0</div><div class="lbl">إجمالي المسحات</div></div>
+      <div class="stat-box"><div class="num" id="sActive">0</div><div class="lbl">نشطة</div></div>
+    </div>
+    <div class="search-bar"><span class="search-icon">🔍</span><input type="text" id="searchInput" placeholder="ابحث بالاسم أو الرابط..." oninput="renderList()"></div>
+    <div id="list"></div>
+  </div>
+
+  <!-- DETAIL VIEW -->
+  <div class="view" id="view-detail">
+    <div class="detail-view">
+      <button class="btn-sec btn-sm" onclick="switchView('list')" style="margin-bottom:16px;">← رجوع</button>
+      <div class="detail-header"><h2 id="detailTitle">—</h2><div class="detail-url" id="detailUrl">—</div></div>
+      <div class="detail-qr-box" id="detailQRBox"></div>
+      <div class="detail-meta">
+        <div class="detail-meta-box"><div class="val" id="detailScans">0</div><div class="lbl">مسحات</div></div>
+        <div class="detail-meta-box"><div class="val" id="detailDate">—</div><div class="lbl">تاريخ</div></div>
+        <div class="detail-meta-box"><div class="val">✅</div><div class="lbl">نشط</div></div>
+      </div>
+      <div class="card"><h2>⬇️ تحميل بصيغ متعددة</h2>
+        <div class="download-options">
+          <button class="download-btn" onclick="downloadFormat('png')"><span class="fmt-icon">🖼️</span><span class="fmt-name">PNG</span></button>
+          <button class="download-btn" onclick="downloadFormat('jpeg')"><span class="fmt-icon">📸</span><span class="fmt-name">JPEG</span></button>
+          <button class="download-btn" onclick="downloadFormat('webp')"><span class="fmt-icon">🌐</span><span class="fmt-name">WEBP</span></button>
+          <button class="download-btn" onclick="downloadFormat('svg')"><span class="fmt-icon">✏️</span><span class="fmt-name">SVG</span></button>
+        </div>
+      </div>
+      <div class="card"><div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+        <button onclick="editCurrentDetail()">✏️ تعديل</button>
+        <button class="btn-danger" onclick="deleteCurrentDetail()">🗑️ حذف</button>
+      </div></div>
+    </div>
+  </div>
+
+  <!-- ACCOUNTS VIEW -->
+  <div class="view" id="view-accounts">
+    <div class="card">
+      <h2>👥 كل الحسابات المسجلة</h2>
+      <div class="search-bar" style="margin-top:12px;"><span class="search-icon">🔍</span><input type="text" id="accountSearch" placeholder="ابحث بالاسم أو الإيميل..." oninput="renderAccounts()"></div>
+      <div id="accountsList"></div>
+    </div>
+  </div>
+</div>
+
+<!-- SUCCESS MODAL -->
+<div class="modal-overlay" id="successModal">
+  <div class="modal success-modal">
+    <button class="modal-close-x" onclick="closeSuccessModal()">✕</button>
+    <div class="success-icon">🎉</div>
+    <div class="success-title">تم حفظ الرمز بنجاح!</div>
+    <div class="success-sub">تقدر تنزّله أو تعدّله من هنا</div>
+    <div class="saved-qr-preview" id="savedQRPreview"></div>
+    <div class="success-actions">
+      <button onclick="openDownloadModal()">⬇️ تحميل الرمز</button>
+      <button class="btn-sec" onclick="editFromSuccess()">✏️ تعديل الرمز</button>
+      <button class="btn-sec" onclick="closeSuccessAndGoToList()">📋 عرض كل الرموز</button>
+    </div>
+  </div>
+</div>
+
+<!-- DOWNLOAD MODAL -->
+<div class="modal-overlay" id="downloadModal">
+  <div class="modal">
+    <button class="modal-close-x" onclick="closeDownloadModal()">✕</button>
+    <h3>⬇️ اختر صيغة التحميل</h3>
+    <div class="download-options">
+      <button class="download-btn" onclick="downloadFormat('png')"><span class="fmt-icon">🖼️</span><span class="fmt-name">PNG</span></button>
+      <button class="download-btn" onclick="downloadFormat('jpeg')"><span class="fmt-icon">📸</span><span class="fmt-name">JPEG</span></button>
+      <button class="download-btn" onclick="downloadFormat('webp')"><span class="fmt-icon">🌐</span><span class="fmt-name">WEBP</span></button>
+      <button class="download-btn" onclick="downloadFormat('svg')"><span class="fmt-icon">✏️</span><span class="fmt-name">SVG</span></button>
+    </div>
+    <div class="modal-actions"><button class="btn-sec" onclick="closeDownloadModal()">إغلاق</button></div>
+  </div>
+</div>
+
+<!-- DELETE MODAL -->
+<div class="modal-overlay" id="deleteModal">
+  <div class="modal">
+    <button class="modal-close-x" onclick="closeDeleteModal()">✕</button>
+    <h3>🗑️ تأكيد الحذف</h3>
+    <p style="color:var(--muted);margin-bottom:16px;font-size:0.9rem;">هل أنت متأكد من حذف هذا الرمز؟ لا يمكن التراجع.</p>
+    <div class="modal-actions"><button class="btn-danger" onclick="confirmDelete()">🗑️ نعم، احذف</button><button class="btn-sec" onclick="closeDeleteModal()">إلغاء</button></div>
+  </div>
+</div>
+
+<!-- SETTINGS MODAL -->
+<div class="modal-overlay" id="settingsModal">
+  <div class="modal" style="max-width:520px;">
+    <button class="modal-close-x" onclick="closeSettings()">✕</button>
+    <h3>⚙️ الإعدادات</h3>
+    <div class="settings-section">
+      <h4>🎨 الثيم</h4>
+      <div class="theme-grid" id="themeGrid"></div>
+      <div id="colorEditor"></div>
+    </div>
+    <div class="settings-section">
+      <h4>🔧 خيارات سريعة</h4>
+      <div class="toggle-row"><span class="toggle-label">🌙 الثيم الداكن</span><div class="toggle-switch" id="darkModeToggle" onclick="toggleDarkMode()"></div></div>
+    </div>
+    <div class="settings-section">
+      <h4>📊 معلومات الحساب</h4>
+      <div style="background:var(--bg);padding:12px;border-radius:10px;font-size:0.8rem;">
+        <div style="display:flex;justify-content:space-between;padding:4px 0;"><span style="color:var(--muted);">البريد:</span><span id="settingsEmail" style="font-weight:600;">—</span></div>
+        <div style="display:flex;justify-content:space-between;padding:4px 0;"><span style="color:var(--muted);">عدد الرموز:</span><span id="settingsQRCount" style="font-weight:600;">0</span></div>
+      </div>
+    </div>
+    <div class="modal-actions"><button class="btn-danger" onclick="doLogout()">🚪 تسجيل خروج</button><button class="btn-sec" onclick="closeSettings()">إغلاق</button></div>
+  </div>
+</div>
+
+<!-- USER MENU -->
+<div class="modal-overlay" id="userMenuModal">
+  <div class="modal" style="max-width:380px;">
+    <button class="modal-close-x" onclick="closeUserMenu()">✕</button>
+    <h3>👤 حسابي</h3>
+    <div style="text-align:center;padding:16px 0;">
+      <div style="width:80px;height:80px;border-radius:50%;background:linear-gradient(135deg,var(--primary),var(--secondary));display:flex;align-items:center;justify-content:center;font-size:2rem;color:white;margin:0 auto 12px;" id="menuAvatar">👤</div>
+      <div style="font-weight:700;font-size:1.1rem;" id="menuName">—</div>
+      <div style="font-size:0.85rem;color:var(--muted);" id="menuEmail">—</div>
+    </div>
+    <div class="modal-actions" style="flex-direction:column;">
+      <button onclick="openSettings();closeUserMenu();">⚙️ الإعدادات</button>
+      <button class="btn-danger" onclick="doLogout()">🚪 تسجيل خروج</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script>
+/* ========== CONSTANTS ========== */
+var DB_KEY = 'qr_studio_v8';
+var SESSION_KEY = 'qr_session_v8';
+var db = { accounts: [], links: [] };
+var currentUser = null;
+var links = [];
+var currentQR = null;
+var savedQRInstance = null;
+var detailQRInstance = null;
+var editingId = null;
+var deletingId = null;
+var logoDataUrl = null;
+var currentDetailId = null;
+var savedLinkForModal = null;
+var currentTheme = 'light';
+var pendingRegistration = null;
+var adminViewingUserId = null;
+
+var design = {
+  colorDark: '#1e293b', colorLight: '#ffffff', colorGrad: '#8b5cf6',
+  useGradient: false, dotsType: 'square',
+  cornersSquareType: 'square', cornersDotType: 'square',
+  logoSize: 40, logoMargin: 6,
+  useLogoFrame: false, logoFrameColor: '#6366f1',
+  qrSize: 280, margin: 10, errorLevel: 'Q'
+};
+
+var THEMES = [
+  { id:'light', name:'فاتح', vars:{ primary:'#6366f1', primaryDark:'#4f46e5', secondary:'#8b5cf6', success:'#10b981', danger:'#ef4444', warning:'#f59e0b', bg:'#f1f5f9', card:'#ffffff', text:'#1e293b', muted:'#64748b', border:'#e2e8f0', hover:'#f8fafc', previewBg:'linear-gradient(135deg, #f8fafc, #e0e7ff)' } },
+  { id:'dark', name:'داكن', vars:{ primary:'#818cf8', primaryDark:'#6366f1', secondary:'#a78bfa', success:'#34d399', danger:'#f87171', warning:'#fbbf24', bg:'#0f172a', card:'#1e293b', text:'#f1f5f9', muted:'#94a3b8', border:'#334155', hover:'#334155', previewBg:'linear-gradient(135deg, #1e293b, #312e81)' } },
+  { id:'ocean', name:'محيط', vars:{ primary:'#0ea5e9', primaryDark:'#0284c7', secondary:'#06b6d4', success:'#10b981', danger:'#ef4444', warning:'#f59e0b', bg:'#ecfeff', card:'#ffffff', text:'#164e63', muted:'#0891b2', border:'#a5f3fc', hover:'#cffafe', previewBg:'linear-gradient(135deg, #ecfeff, #cffafe)' } },
+  { id:'forest', name:'غابة', vars:{ primary:'#059669', primaryDark:'#047857', secondary:'#10b981', success:'#10b981', danger:'#ef4444', warning:'#f59e0b', bg:'#f0fdf4', card:'#ffffff', text:'#14532d', muted:'#16a34a', border:'#bbf7d0', hover:'#dcfce7', previewBg:'linear-gradient(135deg, #f0fdf4, #dcfce7)' } },
+  { id:'sunset', name:'غروب', vars:{ primary:'#f97316', primaryDark:'#ea580c', secondary:'#ec4899', success:'#10b981', danger:'#ef4444', warning:'#f59e0b', bg:'#fff7ed', card:'#ffffff', text:'#7c2d12', muted:'#ea580c', border:'#fed7aa', hover:'#ffedd5', previewBg:'linear-gradient(135deg, #fff7ed, #fed7aa)' } },
+  { id:'purple', name:'بنفسجي', vars:{ primary:'#a855f7', primaryDark:'#9333ea', secondary:'#d946ef', success:'#10b981', danger:'#ef4444', warning:'#f59e0b', bg:'#faf5ff', card:'#ffffff', text:'#581c87', muted:'#9333ea', border:'#e9d5ff', hover:'#f3e8ff', previewBg:'linear-gradient(135deg, #faf5ff, #e9d5ff)' } }
+];
+
+var COLOR_LABELS = { primary:'الأساسي', primaryDark:'الأساسي الغامق', secondary:'الثانوي', bg:'الخلفية', card:'البطاقات', text:'النص', muted:'النص الباهت', border:'الحدود', hover:'التحويم' };
+var EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+var BLOCKED_DOMAINS = ['test.com','example.com','fake.com','abc.com','xyz.com','asd.com','aa.com','test.test'];
+
+/* ========== TOAST ========== */
+var toastTimer;
+function toast(msg, type) {
+  var t = document.getElementById('toast');
+  if (!t) return;
+  t.textContent = msg;
+  t.className = 'show' + (type ? ' ' + type : '');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(function(){ t.className = ''; }, 3500);
+}
+
+/* ========== HELPERS ========== */
+function newId() { return Math.random().toString(36).substring(2,10) + Date.now().toString(36).slice(-4); }
+function esc(s) { return String(s||'').replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];}); }
+function hexToRgb(hex){var r=/^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);return r?{r:parseInt(r[1],16),g:parseInt(r[2],16),b:parseInt(r[3],16)}:null;}
+
+/* ========== STORAGE ========== */
+function saveDB() {
+  try {
+    var json = JSON.stringify(db);
+    localStorage.setItem(DB_KEY, json);
+    return true;
+  } catch(e) { console.error('saveDB', e); toast('⚠️ مساحة التخزين ممتلئة', 'err'); return false; }
+}
+function loadDB() {
+  try {
+    var raw = localStorage.getItem(DB_KEY);
+    db = raw ? JSON.parse(raw) : { accounts: [], links: [] };
+    if (!Array.isArray(db.accounts)) db.accounts = [];
+    if (!Array.isArray(db.links)) db.links = [];
+  } catch(e) { db = { accounts: [], links: [] }; }
+}
+function saveSession() {
+  try {
+    if (currentUser) localStorage.setItem(SESSION_KEY, JSON.stringify({ userId: currentUser.id }));
+    else localStorage.removeItem(SESSION_KEY);
+  } catch(e) {}
+}
+function loadSession() {
+  try {
+    var raw = localStorage.getItem(SESSION_KEY);
+    if (raw) {
+      var sess = JSON.parse(raw);
+      loadDB();
+      currentUser = db.accounts.find(function(a){return a.id===sess.userId;}) || null;
+      if (!currentUser) localStorage.removeItem(SESSION_KEY);
+    }
+  } catch(e) { currentUser = null; }
+}
+
+/* ========== THEME ========== */
+function applyTheme(themeId, customVars) {
+  var theme = THEMES.find(function(t){return t.id===themeId;}) || THEMES[0];
+  currentTheme = themeId;
+  var vars = customVars || (currentUser && currentUser.customColors && currentUser.customColors[themeId]) || theme.vars;
+  applyVarsToDOM(vars);
+  if (currentUser) {
+    currentUser.theme = themeId;
+    if (customVars) {
+      if (!currentUser.customColors) currentUser.customColors = {};
+      currentUser.customColors[themeId] = customVars;
+    }
+    var idx = db.accounts.findIndex(function(a){return a.id===currentUser.id;});
+    if (idx>=0) db.accounts[idx] = currentUser;
+    saveDB();
+  }
+  renderThemeGrid();
+  renderColorEditor();
+  var t = document.getElementById('darkModeToggle');
+  if (t) t.classList.toggle('active', themeId==='dark');
+  var tb = document.getElementById('themeToggleBtn');
+  if (tb) tb.textContent = themeId==='dark' ? '☀️' : '🌙';
+}
+function applyVarsToDOM(vars) {
+  var root = document.documentElement;
+  var map = { primary:'--primary', primaryDark:'--primary-dark', secondary:'--secondary', success:'--success', danger:'--danger', warning:'--warning', bg:'--bg', card:'--card', text:'--text', muted:'--muted', border:'--border', hover:'--hover', previewBg:'--preview-bg' };
+  Object.keys(map).forEach(function(k){ if (vars[k]) root.style.setProperty(map[k], vars[k]); });
+  if (vars.primary) {
+    var rgb = hexToRgb(vars.primary);
+    if (rgb) {
+      root.style.setProperty('--shadow', 'rgba('+rgb.r+','+rgb.g+','+rgb.b+',0.15)');
+      root.style.setProperty('--shadow-lg', 'rgba('+rgb.r+','+rgb.g+','+rgb.b+',0.35)');
+    }
+  }
+}
+function toggleThemeQuick() {
+  var next = (currentTheme==='dark') ? 'light' : 'dark';
+  applyTheme(next);
+  toast('🎨 ' + (next==='dark'?'داكن':'فاتح'), 'ok');
+}
+function toggleDarkMode(){ toggleThemeQuick(); }
+
+function renderThemeGrid() {
+  var grid = document.getElementById('themeGrid');
+  if (!grid) return;
+  grid.innerHTML = THEMES.map(function(t) {
+    var active = currentTheme===t.id ? ' active' : '';
+    var hasCustom = currentUser && currentUser.customColors && currentUser.customColors[t.id];
+    return '<div class="theme-card'+active+'" onclick="applyTheme(\''+t.id+'\')">' +
+      '<div class="theme-preview">' +
+      '<div class="swatch" style="background:'+t.vars.primary+';"></div>' +
+      '<div class="swatch" style="background:'+t.vars.secondary+';"></div>' +
+      '<div class="swatch" style="background:'+t.vars.bg+';"></div>' +
+      '<div class="swatch" style="background:'+t.vars.card+';"></div>' +
+      '</div><div class="theme-name">'+t.name+(hasCustom?' ✏️':'')+'</div></div>';
+  }).join('');
+}
+
+function renderColorEditor() {
+  var box = document.getElementById('colorEditor');
+  if (!box) return;
+  var theme = THEMES.find(function(t){return t.id===currentTheme;}) || THEMES[0];
+  var vars = (currentUser && currentUser.customColors && currentUser.customColors[currentTheme]) || theme.vars;
+  var keys = ['primary','primaryDark','secondary','bg','card','text','muted','border','hover'];
+  var html = '<div class="color-editor-section"><div style="font-size:0.8rem;font-weight:700;margin-bottom:8px;">🎨 تخصيص ألوان "'+theme.name+'"</div><div class="custom-color-grid">';
+  keys.forEach(function(k){
+    var val = vars[k] || theme.vars[k] || '#000000';
+    html += '<div class="custom-color-item"><label>'+COLOR_LABELS[k]+'</label><input type="color" value="'+val+'" data-var="'+k+'" oninput="updateCustomColor(this)"></div>';
+  });
+  html += '</div><button class="reset-theme-btn" onclick="resetThemeColors()">🔄 إرجاع الألوان الأصلية</button></div>';
+  box.innerHTML = html;
+}
+
+function updateCustomColor(input) {
+  var key = input.dataset.var;
+  var theme = THEMES.find(function(t){return t.id===currentTheme;}) || THEMES[0];
+  if (!currentUser) return;
+  if (!currentUser.customColors) currentUser.customColors = {};
+  if (!currentUser.customColors[currentTheme]) currentUser.customColors[currentTheme] = JSON.parse(JSON.stringify(theme.vars));
+  currentUser.customColors[currentTheme][key] = input.value;
+  applyVarsToDOM(currentUser.customColors[currentTheme]);
+  var idx = db.accounts.findIndex(function(a){return a.id===currentUser.id;});
+  if (idx>=0) db.accounts[idx] = currentUser;
+  saveDB();
+}
+
+function resetThemeColors() {
+  if (!currentUser) return;
+  if (currentUser.customColors) delete currentUser.customColors[currentTheme];
+  var idx = db.accounts.findIndex(function(a){return a.id===currentUser.id;});
+  if (idx>=0) db.accounts[idx] = currentUser;
+  saveDB();
+  applyTheme(currentTheme);
+  toast('🔄 تم إرجاع الألوان الأصلية', 'ok');
+}
+
+/* ========== LINK ICON ========== */
+function getLinkIcon(url) {
+  if (!url) return null;
+  var u = url.toLowerCase();
+  if (/facebook\.com|fb\.me|fb\.com/.test(u)) return { icon:'📘', name:'فيسبوك' };
+  if (/tiktok\.com|vm\.tiktok/.test(u)) return { icon:'🎵', name:'تيك توك' };
+  if (/twitter\.com|x\.com/.test(u)) return { icon:'🐦', name:'تويتر/X' };
+  if (/instagram\.com|instagr\.am/.test(u)) return { icon:'📸', name:'انستجرام' };
+  if (/youtube\.com|youtu\.be/.test(u)) return { icon:'▶️', name:'يوتيوب' };
+  if (/whatsapp\.com|wa\.me/.test(u)) return { icon:'💬', name:'واتساب' };
+  if (/telegram\.org|t\.me/.test(u)) return { icon:'✈️', name:'تيليجرام' };
+  if (/linkedin\.com/.test(u)) return { icon:'💼', name:'لينكدإن' };
+  if (/snapchat\.com/.test(u)) return { icon:'👻', name:'سناب' };
+  if (/github\.com/.test(u)) return { icon:'🐙', name:'جيت هاب' };
+  if (/google\.com|g\.co/.test(u)) return { icon:'🔍', name:'جوجل' };
+  if (/mailto:|@.*\.(com|org|net)/.test(u)) return { icon:'📧', name:'بريد' };
+  if (/^tel:|\+?\d{7,}/.test(u)) return { icon:'📞', name:'هاتف' };
+  if (/maps\.google|goo\.gl\/maps/.test(u)) return { icon:'📍', name:'خريطة' };
+  if (/^https?:\/\//.test(u)) return { icon:'🔗', name:'رابط' };
+  return null;
+}
+
+/* ========== AUTH FLOW ========== */
+function hideAllAuthForms() {
+  ['loginForm','registerForm','verifyForm','forgotPasswordForm','forgotAccountForm'].forEach(function(id){
+    var el = document.getElementById(id); if (el) el.style.display = 'none';
+  });
+}
+function showLogin() {
+  hideAllAuthForms();
+  document.getElementById('loginForm').style.display = 'block';
+  document.getElementById('authTitle').textContent = 'تسجيل الدخول';
+  document.getElementById('authSubtitle').textContent = 'ادخل لحسابك عشان تحفظ رموزك';
+  document.getElementById('authIcon').textContent = '🔐';
+}
+function showRegister() {
+  hideAllAuthForms();
+  document.getElementById('registerForm').style.display = 'block';
+  document.getElementById('authTitle').textContent = 'إنشاء حساب جديد';
+  document.getElementById('authSubtitle').textContent = 'سجّل عشان تحفظ رموزك';
+  document.getElementById('authIcon').textContent = '✨';
+}
+function showForgotPassword() {
+  hideAllAuthForms();
+  document.getElementById('forgotPasswordForm').style.display = 'block';
+  document.getElementById('authTitle').textContent = 'نسيت كلمة المرور';
+  document.getElementById('authSubtitle').textContent = 'استرجع حسابك';
+  document.getElementById('authIcon').textContent = '🔑';
+  document.getElementById('fpStep2').style.display = 'none';
+  document.getElementById('fpEmail').value = '';
+  document.getElementById('fpAnswer').value = '';
+}
+function showForgotAccount() {
+  hideAllAuthForms();
+  document.getElementById('forgotAccountForm').style.display = 'block';
+  document.getElementById('authTitle').textContent = 'نسيت بيانات الحساب';
+  document.getElementById('authSubtitle').textContent = 'ابحث عن حسابك';
+  document.getElementById('authIcon').textContent = '📧';
+  document.getElementById('faResults').innerHTML = '';
+  document.getElementById('faQuery').value = '';
+}
+
+function validateEmail(email) {
+  email = (email||'').trim().toLowerCase();
+  if (!email) return { ok:false, msg:'الإيميل مطلوب' };
+  if (!EMAIL_REGEX.test(email)) return { ok:false, msg:'صيغة الإيميل غير صحيحة' };
+  var parts = email.split('@'); var local = parts[0]; var domain = parts[1];
+  if (local.length < 3) return { ok:false, msg:'اسم الإيميل قصير جدًا' };
+  if (domain.length < 4) return { ok:false, msg:'نطاق الإيميل غير صالح' };
+  if (domain.indexOf('.') === -1) return { ok:false, msg:'النطاق لا يحتوي على نقطة' };
+  var tld = domain.split('.').pop();
+  if (tld.length < 2) return { ok:false, msg:'امتداد النطاق غير صالح' };
+  if (BLOCKED_DOMAINS.indexOf(domain) !== -1) return { ok:false, msg:'النطاق ده غير مسموح' };
+  if (/^(test|fake|abc|xyz|aaa|asd|qwe|123)\d*@/.test(email)) return { ok:false, msg:'استخدم إيميل حقيقي' };
+  return { ok:true, msg:'✅ إيميل صالح' };
+}
+
+function checkPasswordStrength() {
+  var val = document.getElementById('regPassword').value;
+  var bar = document.getElementById('pwdStrength');
+  var text = document.getElementById('pwdStrengthText');
+  bar.className = 'password-strength';
+  if (!val) { text.textContent = '6 أحرف على الأقل'; return; }
+  var score = 0;
+  if (val.length >= 6) score++;
+  if (val.length >= 10) score++;
+  if (/[A-Z]/.test(val)) score++;
+  if (/[0-9]/.test(val)) score++;
+  if (/[^A-Za-z0-9]/.test(val)) score++;
+  if (score <= 2) { bar.classList.add('weak'); text.textContent = '🔴 ضعيفة'; }
+  else if (score <= 3) { bar.classList.add('medium'); text.textContent = '🟡 متوسطة'; }
+  else { bar.classList.add('strong'); text.textContent = '🟢 قوية'; }
+}
+
+function startEmailVerification() {
+  var name = document.getElementById('regName').value.trim();
+  var email = document.getElementById('regEmail').value.trim().toLowerCase();
+  var password = document.getElementById('regPassword').value;
+  var passwordConfirm = document.getElementById('regPasswordConfirm').value;
+  var secQ = document.getElementById('regSecurityQuestion').value;
+  var secA = document.getElementById('regSecurityAnswer').value.trim();
+
+  if (!name) { toast('⚠️ اكتب اسمك', 'err'); return; }
+  var emailCheck = validateEmail(email);
+  if (!emailCheck.ok) { toast('⚠️ ' + emailCheck.msg, 'err'); return; }
+  if (!password || password.length < 6) { toast('⚠️ كلمة المرور 6 أحرف على الأقل', 'err'); return; }
+  if (password !== passwordConfirm) { toast('⚠️ كلمتا المرور غير متطابقتين', 'err'); return; }
+  if (!secQ) { toast('⚠️ اختر سؤال أمان', 'err'); return; }
+  if (!secA || secA.length < 2) { toast('⚠️ اكتب إجابة سؤال الأمان', 'err'); return; }
+
+  loadDB();
+  if (db.accounts.find(function(a){return a.email===email;})) { toast('⚠️ الإيميل مسجل بالفعل', 'err'); showLogin(); return; }
+
+  var code = String(Math.floor(100000 + Math.random()*900000));
+  pendingRegistration = { name:name, email:email, password:password, securityQuestion:secQ, securityAnswer:secA.toLowerCase(), code:code, createdAt:new Date().toISOString() };
+
+  hideAllAuthForms();
+  document.getElementById('verifyForm').style.display = 'block';
+  document.getElementById('authTitle').textContent = 'تحقق من الإيميل';
+  document.getElementById('authSubtitle').textContent = 'أدخل الكود';
+  document.getElementById('authIcon').textContent = '📧';
+  document.getElementById('verifyEmailDisplay').textContent = email;
+  document.getElementById('demoCodeDisplay').textContent = code;
+  document.querySelectorAll('#codeInputs input').forEach(function(i){ i.value=''; });
+  setTimeout(function(){ document.querySelector('#codeInputs input').focus(); }, 100);
+  toast('📧 الكود ظهر — اكتبه', 'info');
+}
+
+function moveCode(input, idx) {
+  var inputs = document.querySelectorAll('#codeInputs input');
+  if (input.value && idx < 5) { if (inputs[idx+1]) inputs[idx+1].focus(); }
+  else if (!input.value && idx > 0) { if (inputs[idx-1]) inputs[idx-1].focus(); }
+}
+function resendCode() {
+  if (!pendingRegistration) { showRegister(); return; }
+  var code = String(Math.floor(100000 + Math.random()*900000));
+  pendingRegistration.code = code;
+  document.getElementById('demoCodeDisplay').textContent = code;
+  document.querySelectorAll('#codeInputs input').forEach(function(i){ i.value=''; });
+  document.querySelector('#codeInputs input').focus();
+  toast('🔄 كود جديد: ' + code, 'info');
+}
+
+function verifyAndRegister() {
+  if (!pendingRegistration) { showRegister(); return; }
+  var inputs = document.querySelectorAll('#codeInputs input');
+  var entered = ''; inputs.forEach(function(i){ entered += i.value; });
+  if (entered.length !== 6) { toast('⚠️ اكتب 6 أرقام', 'err'); return; }
+  if (entered !== pendingRegistration.code) {
+    toast('❌ الكود غير صحيح', 'err');
+    inputs.forEach(function(i){ i.value=''; }); inputs[0].focus(); return;
+  }
+  loadDB();
+  if (db.accounts.find(function(a){return a.email===pendingRegistration.email;})) { toast('⚠️ الإيميل مسجل بالفعل', 'err'); pendingRegistration=null; showLogin(); return; }
+
+  var user = {
+    id: newId(), name: pendingRegistration.name, email: pendingRegistration.email,
+    password: pendingRegistration.password,
+    securityQuestion: pendingRegistration.securityQuestion, securityAnswer: pendingRegistration.securityAnswer,
+    theme: 'light', isAdmin: db.accounts.length === 0, status: 'active',
+    emailVerified: true, customColors: {},
+    createdAt: new Date().toISOString()
+  };
+  db.accounts.push(user);
+  if (!saveDB()) { db.accounts = db.accounts.filter(function(a){return a.id!==user.id;}); return; }
+  pendingRegistration = null;
+  currentUser = user;
+  saveSession();
+  applyTheme(user.theme);
+  toast('🎉 أهلاً ' + user.name + '! تم التسجيل', 'ok');
+  enterApp();
+}
+
+function doLogin() {
+  var email = document.getElementById('loginEmail').value.trim().toLowerCase();
+  var password = document.getElementById('loginPassword').value;
+  if (!email || !password) { toast('⚠️ املأ البيانات', 'err'); return; }
+  loadDB();
+  var user = db.accounts.find(function(a){ return a.email===email && a.password===password; });
+  if (!user) { toast('❌ إيميل أو كلمة مرور غير صحيحة', 'err'); return; }
+  if (user.status === 'banned') { toast('🚫 حسابك محظور — تواصل مع الأدمن', 'err'); return; }
+  if (user.status === 'disabled') { toast('⏸️ حسابك معطل — تواصل مع الأدمن', 'err'); return; }
+  currentUser = user;
+  saveSession();
+  applyTheme(user.theme || 'light');
+  toast('👋 أهلاً ' + user.name, 'ok');
+  enterApp();
+}
+
+function loadSecurityQuestion() {
+  var email = document.getElementById('fpEmail').value.trim().toLowerCase();
+  if (!email) { toast('⚠️ اكتب الإيميل', 'err'); return; }
+  loadDB();
+  var user = db.accounts.find(function(a){return a.email===email;});
+  if (!user) { toast('❌ لا يوجد حساب', 'err'); return; }
+  if (!user.securityQuestion) { toast('⚠️ لا يوجد سؤال أمان', 'err'); return; }
+  var questions = { pet:'ما اسم حيوانك الأليف الأول؟', city:'في أي مدينة وُلدت؟', school:'ما اسم مدرستك الابتدائية؟', friend:'من هو أفضل صديق في طفولتك؟' };
+  document.getElementById('fpQuestion').textContent = questions[user.securityQuestion] || user.securityQuestion;
+  document.getElementById('fpStep2').style.display = 'block';
+  document.getElementById('fpResult').style.display = 'none';
+  document.getElementById('fpAnswer').value = '';
+  document.getElementById('fpAnswer').focus();
+}
+function recoverPassword() {
+  var email = document.getElementById('fpEmail').value.trim().toLowerCase();
+  var answer = document.getElementById('fpAnswer').value.trim().toLowerCase();
+  var resultEl = document.getElementById('fpResult');
+  if (!answer) { toast('⚠️ اكتب الإجابة', 'err'); return; }
+  loadDB();
+  var user = db.accounts.find(function(a){return a.email===email;});
+  if (!user) { toast('❌ الحساب غير موجود', 'err'); return; }
+  if (answer !== (user.securityAnswer||'')) { toast('❌ الإجابة غير صحيحة', 'err'); return; }
+  resultEl.style.display = 'block';
+  resultEl.innerHTML = '✅ تم التحقق!<br><br>كلمة المرور: <strong style="font-family:monospace;font-size:1.1rem;">' + user.password + '</strong>';
+  toast('🔓 تم الاسترجاع', 'ok');
+}
+function findAccount() {
+  var query = document.getElementById('faQuery').value.trim().toLowerCase();
+  var resultsEl = document.getElementById('faResults');
+  if (!query || query.length < 2) { toast('⚠️ 2 حروف على الأقل', 'err'); return; }
+  loadDB();
+  var matches = db.accounts.filter(function(a){ return (a.email||'').toLowerCase().indexOf(query)!==-1 || (a.name||'').toLowerCase().indexOf(query)!==-1; });
+  if (matches.length === 0) { resultsEl.innerHTML = '<div class="info-box warn">❌ لا توجد حسابات مطابقة</div>'; return; }
+  var html = '<div class="info-box">🔍 وجدنا ' + matches.length + ' حساب:</div>';
+  matches.forEach(function(m){
+    html += '<div style="background:var(--bg);padding:12px;border-radius:10px;margin-bottom:8px;font-size:0.85rem;">';
+    html += '<strong>👤 ' + esc(m.name) + '</strong><br>';
+    html += '<span style="color:var(--muted);font-family:monospace;direction:ltr;">' + maskEmail(m.email) + '</span>';
+    html += '</div>';
+  });
+  resultsEl.innerHTML = html;
+}
+function maskEmail(email) {
+  if (!email) return '***';
+  var parts = email.split('@'); var local = parts[0]; var domain = parts[1]||'';
+  if (local.length <= 2) return local[0] + '***@' + domain;
+  return local.substring(0,2) + '***' + local.substring(local.length-1) + '@' + domain;
+}
+
+/* ========== SESSION / LOGOUT ========== */
+function doLogout() {
+  currentUser = null; saveSession();
+  closeSettings(); closeUserMenu();
+  showAuthView();
+  toast('👋 تم تسجيل الخروج', 'info');
+}
+function showAuthView() {
+  document.getElementById('navTabs').style.display = 'none';
+  document.getElementById('pageTitle').style.display = 'none';
+  document.getElementById('userBadge').style.display = 'none';
+  document.getElementById('settingsBtn').style.display = 'none';
+  document.querySelectorAll('.view').forEach(function(v){ v.classList.remove('active'); });
+  document.getElementById('view-auth').classList.add('active');
+  showLogin();
+}
+function enterApp() {
+  document.getElementById('navTabs').style.display = 'flex';
+  document.getElementById('pageTitle').style.display = 'flex';
+  document.getElementById('userBadge').style.display = 'flex';
+  document.getElementById('settingsBtn').style.display = 'flex';
+  document.getElementById('userBadgeName').textContent = '👤 ' + currentUser.name;
+  if (currentUser.isAdmin) document.getElementById('accountsTab').style.display = 'flex';
+  else document.getElementById('accountsTab').style.display = 'none';
+  loadUserLinks();
+  switchView('create');
+}
+
+/* ========== USER LINKS ========== */
+function loadUserLinks() {
+  if (!currentUser) { links = []; return; }
+  links = db.links.filter(function(l){ return l.userId===currentUser.id; });
+}
+function persistLink(link) {
+  var idx = db.links.findIndex(function(l){return l.id===link.id;});
+  if (idx>=0) db.links[idx] = link; else db.links.unshift(link);
+  saveDB();
+}
+function deleteLinkFromDB(id) {
+  db.links = db.links.filter(function(l){return l.id!==id;});
+  saveDB();
+}
+
+/* ========== SETTINGS ========== */
+function openSettings() {
+  renderThemeGrid();
+  renderColorEditor();
+  if (currentUser) {
+    document.getElementById('settingsEmail').textContent = currentUser.email;
+    var count = db.links.filter(function(l){return l.userId===currentUser.id;}).length;
+    document.getElementById('settingsQRCount').textContent = count;
+  }
+  document.getElementById('settingsModal').classList.add('active');
+}
+function closeSettings(){ document.getElementById('settingsModal').classList.remove('active'); }
+function openUserMenu() {
+  if (!currentUser) return;
+  document.getElementById('menuAvatar').textContent = currentUser.name.charAt(0).toUpperCase();
+  document.getElementById('menuName').textContent = currentUser.name;
+  document.getElementById('menuEmail').textContent = currentUser.email;
+  document.getElementById('userMenuModal').classList.add('active');
+}
+function closeUserMenu(){ document.getElementById('userMenuModal').classList.remove('active'); }
+
+/* ========== VIEWS ========== */
+var VIEW_META = { create:{icon:'➕',title:'إنشاء QR جديد'}, list:{icon:'📋',title:'رموزي'}, detail:{icon:'🔍',title:'تفاصيل الرمز'}, accounts:{icon:'👥',title:'إدارة الحسابات'} };
+function switchView(name, el) {
+  document.querySelectorAll('.view').forEach(function(v){ v.classList.remove('active'); });
+  document.getElementById('view-'+name).classList.add('active');
+  document.querySelectorAll('.nav-tab').forEach(function(t){ t.classList.remove('active'); });
+  if (el) el.classList.add('active');
+  else {
+    var tabs = document.querySelectorAll('.nav-tab');
+    var map = { create:0, list:1, accounts:2 };
+    if (map[name]!==undefined && tabs[map[name]]) tabs[map[name]].classList.add('active');
+  }
+  var meta = VIEW_META[name] || { icon:'📄', title:name };
+  document.getElementById('pageTitleIcon').textContent = meta.icon;
+  document.getElementById('pageTitleText').textContent = meta.title;
+  if (name==='list') { renderList(); renderStats(); }
+  if (name==='accounts') { renderAccounts(); }
+  document.querySelector('.main').scrollTop = 0;
+}
+
+/* ========== SHAPES/COLORS ========== */
+function switchTab(name, el) {
+  document.querySelectorAll('.icon-tab').forEach(function(t){ t.classList.remove('active'); });
+  document.querySelectorAll('.tab-panel').forEach(function(p){ p.classList.remove('active'); });
+  el.classList.add('active');
+  document.getElementById('panel-'+name).classList.add('active');
+}
+function pickShape(category, type, el) {
+  var grid = el.parentElement;
+  grid.querySelectorAll('.shape-option').forEach(function(o){ o.classList.remove('active'); });
+  el.classList.add('active');
+  if (category==='dots') design.dotsType = type;
+  if (category==='cornersSquare') design.cornersSquareType = type;
+  if (category==='cornersDot') design.cornersDotType = type;
+  livePreview();
+}
+function applyPreset(dark, light) {
+  document.getElementById('colorDark').value = dark;
+  document.getElementById('colorLight').value = light;
+  document.getElementById('colorDarkVal').textContent = dark;
+  document.getElementById('colorLightVal').textContent = light;
+  design.colorDark = dark; design.colorLight = light;
+  livePreview();
+}
+function applyGradient(c1, c2, el) {
+  document.getElementById('useGradient').checked = true;
+  document.getElementById('gradientOptions').style.display = 'block';
+  document.getElementById('colorDark').value = c1;
+  document.getElementById('colorGrad').value = c2;
+  document.getElementById('colorDarkVal').textContent = c1;
+  document.getElementById('colorGradVal').textContent = c2;
+  design.colorDark = c1; design.colorGrad = c2; design.useGradient = true;
+  document.querySelectorAll('.gradient-preset').forEach(function(g){g.classList.remove('active');});
+  if (el) el.classList.add('active');
+  livePreview();
+}
+
+/* ========== BUILD QR ========== */
+function buildQROptions(data) {
+  var opts = {
+    width: design.qrSize, height: design.qrSize, data: data, margin: design.margin,
+    qrOptions: { errorCorrectionLevel: design.errorLevel },
+    dotsOptions: { type: design.dotsType, color: design.useGradient ? undefined : design.colorDark },
+    backgroundOptions: { color: design.colorLight },
+    cornersSquareOptions: { type: design.cornersSquareType, color: design.useGradient ? undefined : design.colorDark },
+    cornersDotOptions: { type: design.cornersDotType, color: design.useGradient ? undefined : design.colorDark }
+  };
+  if (design.useGradient) {
+    var gradient = { type:'linear', rotation: Math.PI/4, colorStops:[{offset:0,color:design.colorDark},{offset:1,color:design.colorGrad}] };
+    opts.dotsOptions.gradient = gradient;
+    opts.cornersSquareOptions.gradient = gradient;
+    opts.cornersDotOptions.gradient = gradient;
+  }
+  if (logoDataUrl) {
+    opts.image = logoDataUrl;
+    opts.imageOptions = { crossOrigin:'anonymous', hideBackgroundDots:true, imageSize: design.logoSize/100, margin: design.logoMargin };
+    opts.qrOptions.errorCorrectionLevel = 'H';
+  }
+  return opts;
+}
+function livePreview() {
+  var url = document.getElementById('inUrl').value.trim();
+  var wrapper = document.getElementById('qrWrapper');
+  if (!url) {
+    wrapper.className = 'preview-area empty';
+    wrapper.innerHTML = '<div class="icon">📱</div><div>ادخل رابط وابدأ التصميم</div>';
+    currentQR = null; return;
+  }
+  wrapper.className = 'preview-area';
+  wrapper.innerHTML = '';
+  try { currentQR = new QRCodeStyling(buildQROptions(url)); currentQR.append(wrapper); }
+  catch(e) { console.error(e); }
+}
+function resetForm() {
+  document.getElementById('inLabel').value = '';
+  document.getElementById('inUrl').value = '';
+  document.getElementById('colorDark').value = '#1e293b';
+  document.getElementById('colorLight').value = '#ffffff';
+  document.getElementById('colorGrad').value = '#8b5cf6';
+  document.getElementById('useGradient').checked = false;
+  document.getElementById('gradientOptions').style.display = 'none';
+  document.getElementById('colorDarkVal').textContent = '#1e293b';
+  document.getElementById('colorLightVal').textContent = '#ffffff';
+  document.getElementById('colorGradVal').textContent = '#8b5cf6';
+  design = { colorDark:'#1e293b', colorLight:'#ffffff', colorGrad:'#8b5cf6', useGradient:false, dotsType:'square', cornersSquareType:'square', cornersDotType:'square', logoSize:40, logoMargin:6, useLogoFrame:false, logoFrameColor:'#6366f1', qrSize:280, margin:10, errorLevel:'Q' };
+  ['dotsGrid','cornersSquareGrid','cornersDotGrid'].forEach(function(gid){
+    var grid = document.getElementById(gid); if (!grid) return;
+    grid.querySelectorAll('.shape-option').forEach(function(o,i){ o.classList.toggle('active', i===0); });
+  });
+  removeLogo();
+  editingId = null;
+  document.getElementById('saveBtn').textContent = '💾 حفظ الرمز';
+  livePreview();
+  toast('🔄 بدء جديد', 'info');
+}
+
+/* ========== SAVE QR ========== */
+function saveQR() {
+  if (!currentUser) { toast('⚠️ سجّل دخول أولاً', 'err'); return; }
+  var label = document.getElementById('inLabel').value.trim();
+  var url = document.getElementById('inUrl').value.trim();
+  if (!label) { toast('⚠️ اكتب عنوان', 'err'); document.getElementById('inLabel').focus(); return; }
+  if (!url) { toast('⚠️ اكتب رابط', 'err'); document.getElementById('inUrl').focus(); return; }
+  loadDB();
+  var designSnapshot = JSON.parse(JSON.stringify(design));
+  designSnapshot.logo = logoDataUrl || null;
+  var savedLink;
+  if (editingId) {
+    var link = db.links.find(function(l){return l.id===editingId;});
+    if (!link) { toast('❌ غير موجود', 'err'); return; }
+    link.label = label; link.url = url; link.design = designSnapshot;
+    savedLink = link;
+    toast('💾 تم حفظ التعديلات', 'ok');
+  } else {
+    savedLink = { id: newId(), userId: currentUser.id, label: label, url: url, design: designSnapshot, scans:0, createdAt:new Date().toISOString() };
+    toast('🎉 تم الحفظ!', 'ok');
+  }
+  persistLink(savedLink);
+  loadUserLinks();
+  renderList(); renderStats();
+  showSuccessModal(savedLink);
+  editingId = null;
+  document.getElementById('saveBtn').textContent = '💾 حفظ الرمز';
+}
+
+function showSuccessModal(link) {
+  savedLinkForModal = link;
+  var box = document.getElementById('savedQRPreview');
+  box.innerHTML = '';
+  try {
+    var d = link.design || {};
+    var opts = {
+      width: 200, height: 200, data: link.url, margin: d.margin || 10,
+      qrOptions: { errorCorrectionLevel: d.errorLevel || 'Q' },
+      dotsOptions: { type: d.dotsType || 'square', color: d.useGradient ? undefined : (d.colorDark || '#1e293b') },
+      backgroundOptions: { color: d.colorLight || '#ffffff' },
+      cornersSquareOptions: { type: d.cornersSquareType || 'square', color: d.useGradient ? undefined : (d.colorDark || '#1e293b') },
+      cornersDotOptions: { type: d.cornersDotType || 'square', color: d.useGradient ? undefined : (d.colorDark || '#1e293b') }
+    };
+    if (d.useGradient) {
+      var grad = { type:'linear', rotation: Math.PI/4, colorStops:[{offset:0,color:d.colorDark},{offset:1,color:d.colorGrad}] };
+      opts.dotsOptions.gradient = grad;
+      opts.cornersSquareOptions.gradient = grad;
+      opts.cornersDotOptions.gradient = grad;
+    }
+    if (d.logo) {
+      opts.image = d.logo;
+      opts.imageOptions = { crossOrigin:'anonymous', hideBackgroundDots:true, imageSize:(d.logoSize||40)/100, margin: d.logoMargin || 6 };
+      opts.qrOptions.errorCorrectionLevel = 'H';
+    }
+    savedQRInstance = new QRCodeStyling(opts);
+    savedQRInstance.append(box);
+  } catch(e) { console.error(e); }
+  document.getElementById('successModal').classList.add('active');
+}
+function closeSuccessModal(){ document.getElementById('successModal').classList.remove('active'); }
+function openDownloadModal(){ document.getElementById('downloadModal').classList.add('active'); }
+function closeDownloadModal(){ document.getElementById('downloadModal').classList.remove('active'); }
+function editFromSuccess(){ closeSuccessModal(); if (savedLinkForModal) editLink(savedLinkForModal.id); }
+function closeSuccessAndGoToList(){ closeSuccessModal(); switchView('list'); }
+
+/* ========== EDIT ========== */
+function editLink(id) {
+  loadDB();
+  var link = db.links.find(function(l){return l.id===id;});
+  if (!link) return;
+  editingId = id;
+  document.getElementById('saveBtn').textContent = '💾 حفظ التعديلات';
+  document.getElementById('inLabel').value = link.label;
+  document.getElementById('inUrl').value = link.url;
+  var d = link.design || {};
+  design = {
+    colorDark: d.colorDark || '#1e293b', colorLight: d.colorLight || '#ffffff', colorGrad: d.colorGrad || '#8b5cf6',
+    useGradient: !!d.useGradient, dotsType: d.dotsType || 'square', cornersSquareType: d.cornersSquareType || 'square',
+    cornersDotType: d.cornersDotType || 'square', logoSize: d.logoSize || 40, logoMargin: d.logoMargin || 6,
+    useLogoFrame: !!d.useLogoFrame, logoFrameColor: d.logoFrameColor || '#6366f1',
+    qrSize: d.qrSize || 280, margin: d.margin || 10, errorLevel: d.errorLevel || 'Q'
+  };
+  document.getElementById('colorDark').value = design.colorDark;
+  document.getElementById('colorDarkVal').textContent = design.colorDark;
+  document.getElementById('colorLight').value = design.colorLight;
+  document.getElementById('colorLightVal').textContent = design.colorLight;
+  document.getElementById('colorGrad').value = design.colorGrad;
+  document.getElementById('colorGradVal').textContent = design.colorGrad;
+  document.getElementById('useGradient').checked = design.useGradient;
+  document.getElementById('gradientOptions').style.display = design.useGradient ? 'block' : 'none';
+  document.getElementById('qrSize').value = design.qrSize;
+  document.getElementById('sizeVal').textContent = design.qrSize + 'px';
+  document.getElementById('margin').value = design.margin;
+  document.getElementById('marginVal').textContent = design.margin + 'px';
+  document.getElementById('errorLevel').value = design.errorLevel;
+  document.getElementById('logoSize').value = design.logoSize;
+  document.getElementById('logoSizeVal').textContent = design.logoSize + '%';
+  document.getElementById('logoMargin').value = design.logoMargin;
+  document.getElementById('logoMarginVal').textContent = design.logoMargin + 'px';
+  applyShapeToGrid('dotsGrid', design.dotsType);
+  applyShapeToGrid('cornersSquareGrid', design.cornersSquareType);
+  applyShapeToGrid('cornersDotGrid', design.cornersDotType);
+  if (d.logo) {
+    logoDataUrl = d.logo;
+    var box = document.getElementById('uploadBox');
+    box.classList.add('has-image');
+    box.innerHTML = '<img src="'+d.logo+'"><div class="txt">✅ اضغط للتغيير</div>';
+  } else { removeLogo(); }
+  livePreview();
+  switchView('create');
+  toast('✏️ تم التحميل للتعديل', 'info');
+}
+function applyShapeToGrid(gridId, type) {
+  var grid = document.getElementById(gridId); if (!grid) return;
+  grid.querySelectorAll('.shape-option').forEach(function(o){ o.classList.toggle('active', o.dataset.type===type); });
+}
+
+/* ========== DELETE ========== */
+function openDelete(id){ deletingId = id; document.getElementById('deleteModal').classList.add('active'); }
+function closeDeleteModal(){ document.getElementById('deleteModal').classList.remove('active'); deletingId = null; }
+function confirmDelete() {
+  if (!deletingId) return;
+  deleteLinkFromDB(deletingId);
+  loadUserLinks(); closeDeleteModal(); renderList(); renderStats();
+  if (currentDetailId === deletingId) { switchView('list'); currentDetailId = null; }
+  toast('🗑️ تم الحذف', 'err');
+}
+function deleteCurrentDetail(){ if (currentDetailId) openDelete(currentDetailId); }
+
+/* ========== RENDER LIST ========== */
+function renderList() {
+  var el = document.getElementById('list');
+  if (!el) return;
+  var q = (document.getElementById('searchInput').value || '').trim().toLowerCase();
+  var filtered = links;
+  if (q) filtered = links.filter(function(l){ return (l.label||'').toLowerCase().indexOf(q)!==-1 || (l.url||'').toLowerCase().indexOf(q)!==-1; });
+  if (filtered.length === 0) {
+    el.innerHTML = '<div class="empty-state"><div class="icon">📭</div><h3>' + (q?'لا توجد نتائج':'لا توجد رموز بعد') + '</h3><p>' + (q?'جرب كلمة تانية':'صمم أول رمز من تبويب "إنشاء"') + '</p></div>';
+    return;
+  }
+  var html = '';
+  filtered.forEach(function(link) {
+    var linkIcon = getLinkIcon(link.url);
+    var iconBadge = linkIcon ? '<div class="link-icon-badge" title="'+linkIcon.name+'">'+linkIcon.icon+'</div>' : '';
+    html += '<div class="link-card" onclick="viewDetail(\''+link.id+'\')">';
+    html += '<div class="link-thumb" data-id="'+link.id+'">'+iconBadge+'<div class="empty-thumb">📱</div></div>';
+    html += '<div class="link-info">';
+    html += '<h3>' + esc(link.label) + '</h3>';
+    html += '<div class="url">' + esc(link.url) + '</div>';
+    html += '<div class="meta"><span>👁️ ' + link.scans + '</span><span>📅 ' + new Date(link.createdAt).toLocaleDateString('ar') + '</span></div>';
+    html += '</div>';
+    html += '<div class="link-actions" onclick="event.stopPropagation()">';
+    html += '<button class="btn-icon-view" onclick="viewDetail(\''+link.id+'\')">👁️</button>';
+    html += '<button class="btn-icon-edit" onclick="editLink(\''+link.id+'\')">✏️</button>';
+    html += '<button class="btn-icon-del" onclick="openDelete(\''+link.id+'\')">🗑️</button>';
+    html += '</div></div>';
+  });
+  el.innerHTML = html;
+  filtered.forEach(function(link){
+    var thumb = el.querySelector('.link-thumb[data-id="'+link.id+'"]');
+    if (!thumb) return;
+    var empty = thumb.querySelector('.empty-thumb'); if (empty) empty.remove();
+    try {
+      var d = link.design || {};
+      var opts = {
+        width: 70, height: 70, data: link.url, margin: 2,
+        qrOptions: { errorCorrectionLevel: 'L' },
+        dotsOptions: { type: d.dotsType || 'square', color: d.useGradient ? undefined : (d.colorDark || '#1e293b') },
+        backgroundOptions: { color: d.colorLight || '#ffffff' },
+        cornersSquareOptions: { type: d.cornersSquareType || 'square', color: d.useGradient ? undefined : (d.colorDark || '#1e293b') },
+        cornersDotOptions: { type: d.cornersDotType || 'square', color: d.useGradient ? undefined : (d.colorDark || '#1e293b') }
+      };
+      if (d.useGradient) {
+        var g = { type:'linear', rotation: Math.PI/4, colorStops:[{offset:0,color:d.colorDark},{offset:1,color:d.colorGrad}] };
+        opts.dotsOptions.gradient = g;
+        opts.cornersSquareOptions.gradient = g;
+        opts.cornersDotOptions.gradient = g;
+      }
+      if (d.logo) {
+        opts.image = d.logo;
+        opts.imageOptions = { crossOrigin:'anonymous', hideBackgroundDots:true, imageSize:(d.logoSize||40)/100, margin:2 };
+      }
+      new QRCodeStyling(opts).append(thumb);
+    } catch(e) {}
+  });
+}
+
+/* ========== DETAIL ========== */
+function viewDetail(id) {
+  loadDB();
+  var link = db.links.find(function(l){return l.id===id;});
+  if (!link) return;
+  currentDetailId = id;
+  document.getElementById('detailTitle').textContent = link.label;
+  document.getElementById('detailUrl').textContent = link.url;
+  document.getElementById('detailScans').textContent = link.scans;
+  document.getElementById('detailDate').textContent = new Date(link.createdAt).toLocaleDateString('ar');
+  var box = document.getElementById('detailQRBox');
+  box.innerHTML = '';
+  try {
+    var d = link.design || {};
+    var opts = {
+      width: 280, height: 280, data: link.url, margin: d.margin || 10,
+      qrOptions: { errorCorrectionLevel: d.errorLevel || 'Q' },
+      dotsOptions: { type: d.dotsType || 'square', color: d.useGradient ? undefined : (d.colorDark || '#1e293b') },
+      backgroundOptions: { color: d.colorLight || '#ffffff' },
+      cornersSquareOptions: { type: d.cornersSquareType || 'square', color: d.useGradient ? undefined : (d.colorDark || '#1e293b') },
+      cornersDotOptions: { type: d.cornersDotType || 'square', color: d.useGradient ? undefined : (d.colorDark || '#1e293b') }
+    };
+    if (d.useGradient) {
+      var grad = { type:'linear', rotation: Math.PI/4, colorStops:[{offset:0,color:d.colorDark},{offset:1,color:d.colorGrad}] };
+      opts.dotsOptions.gradient = grad;
+      opts.cornersSquareOptions.gradient = grad;
+      opts.cornersDotOptions.gradient = grad;
+    }
+    if (d.logo) {
+      opts.image = d.logo;
+      opts.imageOptions = { crossOrigin:'anonymous', hideBackgroundDots:true, imageSize:(d.logoSize||40)/100, margin: d.logoMargin || 6 };
+      opts.qrOptions.errorCorrectionLevel = 'H';
+    }
+    detailQRInstance = new QRCodeStyling(opts);
+    detailQRInstance.append(box);
+  } catch(e) { console.error(e); }
+  switchView('detail');
+}
+function editCurrentDetail(){ if (currentDetailId) editLink(currentDetailId); }
+
+/* ========== DOWNLOAD ========== */
+function downloadFormat(fmt) {
+  var qr = null;
+  if (document.getElementById('successModal').classList.contains('active') && savedQRInstance) qr = savedQRInstance;
+  else if (currentDetailId && detailQRInstance) qr = detailQRInstance;
+  else qr = currentQR;
+  if (!qr) { toast('⚠️ لا يوجد QR', 'err'); return; }
+  try { qr.download({ name:'qr-'+Date.now(), extension:fmt }); toast('⬇️ تحميل '+fmt.toUpperCase(), 'ok'); closeDownloadModal(); }
+  catch(e) { console.error(e); toast('❌ الصيغة غير مدعومة', 'err'); }
+}
+
+/* ========== LOGO ========== */
+function removeLogo() {
+  logoDataUrl = null;
+  document.getElementById('logoInput').value = '';
+  var box = document.getElementById('uploadBox');
+  box.classList.remove('has-image');
+  box.innerHTML = '<div class="icon" style="font-size:1.8rem;">📷</div><div class="txt">اضغط لاختيار صورة</div>';
+  livePreview();
+}
+
+/* ========== STATS ========== */
+function renderStats() {
+  document.getElementById('sTotal').textContent = links.length;
+  document.getElementById('sScans').textContent = links.reduce(function(s,l){return s+(l.scans||0);},0);
+  document.getElementById('sActive').textContent = links.length;
+}
+
+/* ========== ACCOUNTS (ADMIN) ========== */
+function renderAccounts() {
+  var el = document.getElementById('accountsList');
+  if (!el) return;
+  var q = (document.getElementById('accountSearch').value || '').trim().toLowerCase();
+  var filtered = db.accounts;
+  if (q) filtered = filtered.filter(function(a){ return (a.name||'').toLowerCase().indexOf(q)!==-1 || (a.email||'').toLowerCase().indexOf(q)!==-1; });
+  if (filtered.length === 0) {
+    el.innerHTML = '<div class="empty-state"><div class="icon">👥</div><h3>لا توجد حسابات</h3></div>';
+    return;
+  }
+  el.innerHTML = filtered.map(function(a) {
+    var userLinks = db.links.filter(function(l){return l.userId===a.id;});
+    var totalScans = userLinks.reduce(function(s,l){return s+(l.scans||0);},0);
+    var isBanned = a.status === 'banned';
+    var isDisabled = a.status === 'disabled';
+    var statusBadge = isBanned ? '<span class="status-badge status-banned">🚫 محظور</span>'
+                    : isDisabled ? '<span class="status-badge status-disabled">⏸️ معطل</span>'
+                    : '<span class="status-badge status-active">✅ نشط</span>';
+    var adminBadge = a.isAdmin ? '<span class="admin-crown">👑</span>' : '';
+    var isSelf = currentUser && currentUser.id === a.id;
+
+    var adminBtn = a.isAdmin
+      ? '<button class="btn-icon-disable" onclick="toggleAdmin(\''+a.id+'\')">👑 إزالة أدمن</button>'
+      : '<button class="btn-icon-admin" onclick="toggleAdmin(\''+a.id+'\')">👑 ترقية لأدمن</button>';
+    var statusBtn = isBanned
+      ? '<button class="btn-icon-unban" onclick="unbanAccount(\''+a.id+'\')">✅ إلغاء الحظر</button>'
+      : '<button class="btn-icon-ban" onclick="banAccount(\''+a.id+'\')">🚫 حظر</button>';
+    var disableBtn = isDisabled
+      ? '<button class="btn-icon-unban" onclick="enableAccount(\''+a.id+'\')">▶️ تفعيل</button>'
+      : '<button class="btn-icon-disable" onclick="disableAccount(\''+a.id+'\')">⏸️ تعطيل</button>';
+    var viewQRsBtn = '<button class="btn-icon-view" onclick="adminViewUserQRs(\''+a.id+'\')">👁️ رموزه</button>';
+    var deleteBtn = '<button class="btn-icon-del" onclick="deleteAccount(\''+a.id+'\')">🗑️ حذف</button>';
+
+    var actionsHtml = isSelf
+      ? '<div style="font-size:0.7rem;color:var(--muted);margin-top:8px;">(هذا حسابك — لا يمكن تعديل حالته)</div>'
+      : '<div class="account-actions-row">' + adminBtn + statusBtn + disableBtn + viewQRsBtn + deleteBtn + '</div>';
+
+    return '<div class="account-card">' +
+      '<div class="account-avatar">' + esc(a.name.charAt(0).toUpperCase()) + '</div>' +
+      '<div class="account-info">' +
+      '<h3>' + esc(a.name) + ' ' + adminBadge + ' ' + statusBadge + '</h3>' +
+      '<div class="email">' + esc(a.email) + '</div>' +
+      '<div class="stats"><span>📱 '+userLinks.length+' رمز</span><span>👁️ '+totalScans+' مسحة</span><span>📅 '+new Date(a.createdAt).toLocaleDateString('ar')+'</span></div>' +
+      actionsHtml + '</div></div>';
+  }).join('');
+}
+
+function toggleAdmin(userId) {
+  loadDB();
+  var u = db.accounts.find(function(a){return a.id===userId;});
+  if (!u) return;
+  if (u.id === currentUser.id) { toast('⚠️ لا يمكنك تغيير صلاحيتك', 'err'); return; }
+  u.isAdmin = !u.isAdmin;
+  saveDB(); renderAccounts();
+  toast(u.isAdmin ? '👑 تم ترقية ' + u.name : '👤 تم إزالة أدمن ' + u.name, 'ok');
+}
+function disableAccount(userId) {
+  loadDB();
+  var u = db.accounts.find(function(a){return a.id===userId;});
+  if (!u) return;
+  if (u.id === currentUser.id) { toast('⚠️ لا يمكنك تعطيل حسابك', 'err'); return; }
+  if (u.isAdmin) { toast('⚠️ لا يمكن تعطيل أدمن — أزل صلاحيته أولاً', 'err'); return; }
+  u.status = 'disabled'; saveDB(); renderAccounts();
+  toast('⏸️ تم تعطيل ' + u.name, 'info');
+}
+function enableAccount(userId) {
+  loadDB();
+  var u = db.accounts.find(function(a){return a.id===userId;});
+  if (!u) return;
+  u.status = 'active'; saveDB(); renderAccounts();
+  toast('▶️ تم تفعيل ' + u.name, 'ok');
+}
+function banAccount(userId) {
+  loadDB();
+  var u = db.accounts.find(function(a){return a.id===userId;});
+  if (!u) return;
+  if (u.id === currentUser.id) { toast('⚠️ لا يمكنك حظر نفسك', 'err'); return; }
+  if (u.isAdmin) { toast('⚠️ لا يمكن حظر أدمن — أزل صلاحيته أولاً', 'err'); return; }
+  u.status = 'banned'; saveDB(); renderAccounts();
+  toast('🚫 تم حظر ' + u.name, 'err');
+}
+function unbanAccount(userId) {
+  loadDB();
+  var u = db.accounts.find(function(a){return a.id===userId;});
+  if (!u) return;
+  u.status = 'active'; saveDB(); renderAccounts();
+  toast('✅ تم إلغاء حظر ' + u.name, 'ok');
+}
+function deleteAccount(userId) {
+  loadDB();
+  var u = db.accounts.find(function(a){return a.id===userId;});
+  if (!u) return;
+  if (u.id === currentUser.id) { toast('⚠️ لا يمكنك حذف حسابك', 'err'); return; }
+  if (u.isAdmin) { toast('⚠️ لا يمكن حذف أدمن — أزل صلاحيته أولاً', 'err'); return; }
+  if (!confirm('حذف حساب "' + u.name + '" وكل رموزه؟')) return;
+  db.accounts = db.accounts.filter(function(a){return a.id!==userId;});
+  db.links = db.links.filter(function(l){return l.userId!==userId;});
+  saveDB(); renderAccounts();
+  toast('🗑️ تم حذف الحساب', 'err');
+}
+
+/* الأدمن يشوف رموز أي مستخدم */
+function adminViewUserQRs(userId) {
+  loadDB();
+  var user = db.accounts.find(function(a){return a.id===userId;});
+  if (!user) return;
+  var userLinks = db.links.filter(function(l){return l.userId===userId;});
+  if (userLinks.length === 0) { toast('📭 ' + user.name + ' لا يملك رموزاً', 'info'); return; }
+  adminViewingUserId = userId;
+  links = userLinks;
+  switchView('list');
+  document.getElementById('pageTitleText').textContent = 'رموز ' + user.name;
+  document.getElementById('pageTitleIcon').textContent = '👁️';
+  renderList(); renderStats();
+  toast('👁️ تعرض رموز ' + user.name, 'info');
+}
+
+/* ========== INIT ========== */
+window.addEventListener('DOMContentLoaded', function() {
+  loadDB();
+  loadSession();
+  if (currentUser) {
+    applyTheme(currentUser.theme || 'light');
+    enterApp();
+  } else {
+    applyTheme('light');
+    showAuthView();
+  }
+
+  document.getElementById('inUrl').addEventListener('input', livePreview);
+  document.getElementById('colorDark').addEventListener('input', function() { design.colorDark = this.value; document.getElementById('colorDarkVal').textContent = this.value; livePreview(); });
+  document.getElementById('colorLight').addEventListener('input', function() { design.colorLight = this.value; document.getElementById('colorLightVal').textContent = this.value; livePreview(); });
+  document.getElementById('colorGrad').addEventListener('input', function() { design.colorGrad = this.value; document.getElementById('colorGradVal').textContent = this.value; livePreview(); });
+  document.getElementById('useGradient').addEventListener('change', function() { design.useGradient = this.checked; document.getElementById('gradientOptions').style.display = this.checked ? 'block' : 'none'; livePreview(); });
+  document.getElementById('qrSize').addEventListener('input', function() { design.qrSize = parseInt(this.value); document.getElementById('sizeVal').textContent = this.value + 'px'; livePreview(); });
+  document.getElementById('margin').addEventListener('input', function() { design.margin = parseInt(this.value); document.getElementById('marginVal').textContent = this.value + 'px'; livePreview(); });
+  document.getElementById('errorLevel').addEventListener('change', function() { design.errorLevel = this.value; livePreview(); });
+  document.getElementById('logoSize').addEventListener('input', function() { design.logoSize = parseInt(this.value); document.getElementById('logoSizeVal').textContent = this.value + '%'; livePreview(); });
+  document.getElementById('logoMargin').addEventListener('input', function() { design.logoMargin = parseInt(this.value); document.getElementById('logoMarginVal').textContent = this.value + 'px'; livePreview(); });
+  document.getElementById('logoInput').addEventListener('change', function(e) {
+    var file = e.target.files[0]; if (!file) return;
+    if (file.size > 5 * 1024 * 1024) { toast('⚠️ الصورة كبيرة (أقصى 5MB)', 'err'); return; }
+    var reader = new FileReader();
+    reader.onload = function(ev) {
+      var img = new Image();
+      img.onload = function() {
+        var c = document.createElement('canvas'); var w = img.width, h = img.height;
+        if (w > 128 || h > 128) { if (w > h) { h = Math.round(h * 128 / w); w = 128; } else { w = Math.round(w * 128 / h); h = 128; } }
+        c.width = w; c.height = h; c.getContext('2d').drawImage(img, 0, 0, w, h);
+        logoDataUrl = c.toDataURL('image/png');
+        var box = document.getElementById('uploadBox');
+        box.classList.add('has-image');
+        box.innerHTML = '<img src="'+logoDataUrl+'"><div class="txt">✅ اضغط للتغيير</div>';
+        livePreview();
+        toast('🖼️ تم إضافة الشعار', 'ok');
+      };
+      img.src = ev.target.result;
+    };
+    reader.readAsDataURL(file);
+  });
+  document.getElementById('loginPassword').addEventListener('keypress', function(e){ if (e.key === 'Enter') doLogin(); });
+  document.querySelectorAll('#codeInputs input').forEach(function(inp){
+    inp.addEventListener('keydown', function(e){
+      if (e.key === 'Backspace' && !this.value) {
+        var inputs = document.querySelectorAll('#codeInputs input');
+        var idx = Array.prototype.indexOf.call(inputs, this);
+        if (idx > 0) inputs[idx-1].focus();
+      }
+    });
+  });
+
+  if (typeof QRCodeStyling === 'undefined') toast('⚠️ مكتبة QR لم تُحمّل', 'err');
+});
+</script>
+</body>
+</html>
